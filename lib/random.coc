@@ -1,0 +1,33 @@
+import time, math;
+
+bool inited = false;
+ulong seed_x = 0;
+ulong seed_y = 0;
+ulong seed_z = 0;
+
+void init()
+{
+    ulong t = (ulong)time.time_us() * (ulong)time.time_us();
+    seed_x = t % 30268;
+    t /= 30268;
+    seed_y = t % 30306;
+    t /= 30306;
+    seed_z = t % 30322;
+    t /= 30322;
+    ++ seed_x;
+    ++ seed_y;
+    ++ seed_z;
+    inited = true;
+}
+
+public double random()
+{
+    if (!inited)
+    {
+        init();
+    }
+    seed_x = seed_x * 171 % 30269;
+    seed_y = seed_y * 172 % 30307;
+    seed_z = seed_z * 170 % 30323;
+    return math.fmod(seed_x / 30269.0 + seed_y / 30307.0 + seed_z / 30323.0, 1.0);
+}

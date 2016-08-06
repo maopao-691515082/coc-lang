@@ -1,0 +1,6 @@
+public native class Coroutine
+{
+    protected Coroutine();
+    public final int start();
+    abstract int run();
+}

@@ -1,0 +1,8 @@
+public final native class Vector<E>
+{
+    public Vector(long sz);
+
+    public E __op_item_get(long idx);
+    public void __op_item_set(long idx, E elem);
+    public void __op_item_inc(long idx);
+}

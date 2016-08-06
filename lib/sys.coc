@@ -1,0 +1,5 @@
+import io;
+
+public native final io.File stdin;
+public native final io.File stdout;
+public native final io.File stderr;

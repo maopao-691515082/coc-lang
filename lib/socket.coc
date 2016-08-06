@@ -1,0 +1,9 @@
+public native final class TcpSocket
+{
+    public TcpSocket accept();
+    public String get_peer_name();
+    public int send_all(String s);
+    public String recv(uint sz);
+}
+
+public native TcpSocket create_tcp_listen_sock(String host, ushort port, int back_log);

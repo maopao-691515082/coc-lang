@@ -1,0 +1,6 @@
+public native final class File
+{
+    public File(String file_name, String mode);
+
+    public int write(String s);
+}

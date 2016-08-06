@@ -1,0 +1,167 @@
+import time, sys, concurrent, socket, random;
+
+void log(String s)
+{
+    sys.stdout.write("[%s] %s\n".format(time.strftime("%Y-%m-%d %H:%M:%S"), s));
+}
+
+final class Client : concurrent.Coroutine
+{
+    socket.TcpSocket m_sock;
+    String m_result;
+
+    Client(socket.TcpSocket sock) : super()
+    {
+        m_sock = sock;
+        m_result = "";
+
+        do
+        {
+            m_result = "";
+            int n = (int)(random.random() * 10000);
+            for (int i = 0; i < 4; ++ i)
+            {
+                m_result += "%d".format(n % 10);
+                n /= 10;
+            }
+        }
+        while (!is_valid_num(m_result));
+
+        client_log("start with result [%s]".format(m_result));
+    }
+
+    void client_log(String s)
+    {
+        log("client [%s]: %s".format(m_sock.get_peer_name(), s));
+    }
+
+    bool is_valid_input(String s)
+    {
+        if (s.size() != 6)
+        {
+            return false;
+        }
+        return is_valid_num(s);
+    }
+
+    bool is_valid_num(String s)
+    {
+        bool[] selected = new bool[10];
+        for (uint i = 0; i < 4; ++ i)
+        {
+            char c = s[i];
+            if (c < '0' || c > '9' || selected[c - '0'])
+            {
+                return false;
+            }
+            selected[c - '0'] = true;
+        }
+        return true;
+    }
+
+    int send_all(String s)
+    {
+        if (m_sock.send_all(s) != 0)
+        {
+            client_log("send error");
+            return -1;
+        }
+        return 0;
+    }
+
+    int run()
+    {
+        while (true)
+        {
+            if (send_all("Guess a number, 4 different digits:") != 0)
+            {
+                return -1;
+            }
+
+            String s = m_sock.recv(10000);
+            if (s is null)
+            {
+                client_log("recv error");
+                return -1;
+            }
+            if (s.size() == 0)
+            {
+                client_log("client over");
+                return 0;
+            }
+
+            if (s.size() < 2 || s[-2] != '\r' || s[-1] != '\n')
+            {
+                client_log("proto error");
+                return -1;
+            }
+            if (s.size() == 2)
+            {
+                continue;
+            }
+
+            if (!is_valid_input(s))
+            {
+                if (send_all("Invalid input\r\n") != 0)
+                {
+                    return -1;
+                }
+                continue;
+            }
+
+            int[] rsp = new int[2];
+            for (uint i = 0; i < 4; ++ i)
+            {
+                for (uint j = 0; j < 4; ++ j)
+                {
+                    if (m_result[i] == s[j])
+                    {
+                        ++ rsp[i == j ? 0 : 1];
+                    }
+                }
+            }
+            if (rsp[0] == 4)
+            {
+                if (send_all("You got it\r\n") != 0)
+                {
+                    return -1;
+                }
+                client_log("player win");
+                break;
+            }
+            if (send_all("%dA%dB\r\n".format(rsp[0], rsp[1])) != 0)
+            {
+                return -1;
+            }
+        }
+
+        return 0;
+    }
+}
+
+public int main(String[] argv)
+{
+    socket.TcpSocket listen_sock = socket.create_tcp_listen_sock(null, 9999, 10);
+    if (listen_sock is null)
+    {
+        log("create listen sock failed");
+        return 1;
+    }
+
+    log("game start!");
+    while (true)
+    {
+        socket.TcpSocket new_client = listen_sock.accept();
+        if (new_client is null)
+        {
+            log("accept failed");
+        }
+        log("accept success, new client [%s]".format(new_client.get_peer_name()));
+        if ((new Client(new_client)).start() != 0)
+        {
+            log("start client failed");
+        }
+    }
+
+    return 0;
+}
