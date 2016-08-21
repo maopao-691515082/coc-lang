@@ -388,6 +388,7 @@ def parse_stmt_list(token_list, module, cls, var_map_list, loop_deep, ret_type):
         if t.is_reserved and t.value in ("break", "continue"):
             if loop_deep == 0:
                 t.syntax_err("Ñ­»·ÍâµÄ'%s'" % t.value)
+            token_list.pop_sym(";")
             stmt_list.append(_Stmt(t.value))
             continue
         if t.is_reserved("return"):
