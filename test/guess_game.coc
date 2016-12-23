@@ -61,9 +61,10 @@ final class Client : concurrent.Coroutine
 
     int send_all(String s)
     {
-        if (m_sock.send_all(s) != 0)
+        socket.SocketError err = m_sock.send_all(s);
+        if (!(err is null))
         {
-            client_log("send error");
+            client_log("send error [%s]".format(err.err_msg()));
             return -1;
         }
         return 0;
@@ -78,10 +79,11 @@ final class Client : concurrent.Coroutine
                 return -1;
             }
 
-            String s = m_sock.recv(10000);
-            if (s is null)
+            String s = null;
+            socket.SocketError err = m_sock.recv(10000, s);
+            if (!(err is null))
             {
-                client_log("recv error");
+                client_log("recv error [%s]".format(err.err_msg()));
                 return -1;
             }
             if (s.size() == 0)
@@ -141,25 +143,29 @@ final class Client : concurrent.Coroutine
 
 public int main(String[] argv)
 {
-    socket.TcpSocket listen_sock = socket.create_tcp_listen_sock(null, 9999, 10);
-    if (listen_sock is null)
+    socket.TcpSocket listen_sock = null;
+    socket.SocketError err = socket.create_tcp_listen_sock(null, 9999, 10, listen_sock);
+    if (!(err is null))
     {
-        log("create listen sock failed");
+        log("create listen sock failed [%s]".format(err.err_msg()));
         return 1;
     }
 
     log("game start!");
     while (true)
     {
-        socket.TcpSocket new_client = listen_sock.accept();
-        if (new_client is null)
+        socket.TcpSocket new_client = null;
+        err = listen_sock.accept(new_client);
+        if (!(err is null))
         {
-            log("accept failed");
+            log("accept failed [%s]".format(err.err_msg()));
         }
         log("accept success, new client [%s]".format(new_client.get_peer_name()));
-        if ((new Client(new_client)).start() != 0)
+        Client c = new Client(new_client);
+        int rc = c.start();
+        if (rc != 0)
         {
-            log("start client failed");
+            log("start client failed [%s]".format(rc));
         }
     }
 

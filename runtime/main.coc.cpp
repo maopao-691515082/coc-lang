@@ -13,5 +13,5 @@ int main(int argc, char *argv[])
         coc_argv->elem_at(i) = create_coc_string_from_cstring(argv[i]);
     }
 
-    return start_prog(coc_argv);
+    return start_coc_prog(coc_argv);
 }

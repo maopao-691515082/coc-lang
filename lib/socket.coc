@@ -1,9 +1,14 @@
-public native final class TcpSocket
+public class SocketError
 {
-    public TcpSocket accept();
-    public String get_peer_name();
-    public int send_all(String s);
-    public String recv(uint sz);
+    public abstract String err_msg();
 }
 
-public native TcpSocket create_tcp_listen_sock(String host, ushort port, int back_log);
+public native final class TcpSocket
+{
+    public SocketError accept(ref TcpSocket conn_sock);
+    public String get_peer_name();
+    public SocketError send_all(String s);
+    public SocketError recv(uint sz, ref String s);
+}
+
+public native SocketError create_tcp_listen_sock(String host, ushort port, int back_log, ref TcpSocket listen_sock);

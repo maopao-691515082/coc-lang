@@ -338,7 +338,7 @@ def _output_cls(code, module, cls, cpp_guard = None):
         for func_list in module.func_map.itervalues():
             assert func_list
             for func in func_list:
-                if "public" in func.decr_set:
+                if "public" in func.decr_set and "native" not in func.decr_set:
                     code += "friend %s %s(%s);" % (_gen_type_code_with_shared_ptr(func.type), _gen_func_name(func),
                                                    _gen_arg_list_code(func.arg_map, func.stmt_list))
 
@@ -349,7 +349,7 @@ def _output_cls(code, module, cls, cpp_guard = None):
         for func_list in module.func_map.itervalues():
             assert func_list
             for func in func_list:
-                if "public" not in func.decr_set:
+                if "public" not in func.decr_set and "native" not in func.decr_set:
                     code += "friend %s %s(%s);" % (_gen_type_code_with_shared_ptr(func.type), _gen_func_name(func),
                                                    _gen_arg_list_code(func.arg_map, func.stmt_list))
         if cpp_guard is not None:

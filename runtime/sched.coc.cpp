@@ -63,8 +63,9 @@ static void dispach()
     }
 }
 
-int start_prog(CocArray<__builtins_$_cls_String *> *coc_argv)
+int start_coc_prog(CocArray<__builtins_$_cls_String *> *coc_argv)
 {
+    concurrent_$_init_default_coroutine_stack_size();
     g_main_co = new MainCo(coc_argv);
     if (g_main_co->method_start() != 0)
     {
@@ -79,22 +80,22 @@ int start_prog(CocArray<__builtins_$_cls_String *> *coc_argv)
     return main_ret;
 }
 
-ucontext_t *get_sched_ctx()
+ucontext_t *get_coc_sched_ctx()
 {
     return &g_sched_ctx;
 }
 
-void register_co(concurrent_$_cls_Coroutine *co)
+void register_coc_co(concurrent_$_cls_Coroutine *co)
 {
     g_co_list.push_back(co);
 }
 
-concurrent_$_cls_Coroutine *get_curr_co()
+concurrent_$_cls_Coroutine *get_curr_coc_co()
 {
     return g_curr_co;
 }
 
-void switch_to_sched()
+void switch_to_coc_sched_co()
 {
     coc_assert(g_curr_co != NULL);
     coc_assert(swapcontext(g_curr_co->get_ctx(), &g_sched_ctx) != -1);
