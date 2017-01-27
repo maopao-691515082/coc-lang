@@ -159,6 +159,7 @@ public int main(String[] argv)
         if (!(err is null))
         {
             log("accept failed [%s]".format(err.err_msg()));
+            continue;
         }
         log("accept success, new client [%s]".format(new_client.get_peer_name()));
         Client c = new Client(new_client);
