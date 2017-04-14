@@ -14,17 +14,13 @@ coc_long_t __builtins_$_cls_String::method_size()
     return m_sz;
 }
 
-coc_char_t __builtins_$_cls_String::method___op_item_get(coc_long_t idx)
+coc_char_t __builtins_$_cls_String::method_char_at(coc_long_t idx)
 {
-    if (idx < 0)
-    {
-        idx += m_sz;
-    }
     coc_assert(idx >= 0 && idx < m_sz);
     return m_data[idx];
 }
 
-coc_int_t __builtins_$_cls_String::method___op_cmp(__builtins_$_cls_String *other)
+coc_int_t __builtins_$_cls_String::method_cmp(__builtins_$_cls_String *other)
 {
     int rc = memcmp(m_data, other->m_data, m_sz < other->m_sz ? m_sz : other->m_sz);
     if (rc < 0)
@@ -46,7 +42,7 @@ coc_int_t __builtins_$_cls_String::method___op_cmp(__builtins_$_cls_String *othe
     return 0;
 }
 
-CocPtr<__builtins_$_cls_String> __builtins_$_cls_String::method___op_add(__builtins_$_cls_String *other)
+CocPtr<__builtins_$_cls_String> __builtins_$_cls_String::method_concat(__builtins_$_cls_String *other)
 {
     coc_long_t sz = m_sz + other->m_sz;
     coc_char_t *new_data = new coc_char_t[sz + 1];

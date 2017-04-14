@@ -156,7 +156,7 @@ def _gen_expr_code_impl(expr, is_lvalue):
         return expr_code
     if expr.op in ("neg", "pos", "!", "~"):
         return "%s%s" % ({"neg" : "-", "pos" : "+"}.get(expr.op, expr.op), _gen_expr_code(expr.arg))
-    if expr.op == "is":
+    if expr.op == "same_obj":
         ea, eb = expr.arg
         return "is_same_coc_obj(%s, %s)" % (_gen_expr_code(ea), _gen_expr_code(eb))
     if expr.op in cocc_token.BINOCULAR_OP_SYM_SET:
@@ -245,7 +245,7 @@ def _gen_expr_code_impl(expr, is_lvalue):
         return "make_coc_ptr(new %s(%s))" % (type_code, ", ".join(expr_code_list))
     if expr.op == "this":
         return "this"
-    if expr.op == "array[]":
+    if expr.op == "[]":
         array_expr, idx_expr = expr.arg
         assert array_expr.type.is_array
         expr_code = "%s->elem_at(%s)" % (_gen_expr_code(array_expr), _gen_expr_code(idx_expr))
@@ -268,14 +268,9 @@ def _gen_expr_code_impl(expr, is_lvalue):
     if expr.op == "str_format":
         fmt, expr_list = expr.arg
         return "create_coc_string_from_format(%s, %s)" % (_gen_literal_str_code(fmt), ", ".join([_gen_expr_code(e) for e in expr_list]))
-    if expr.op in ("call_method", "se_op_method") or expr.op.startswith("call_op_method"):
+    if expr.op == "call_method":
         obj_expr, method, expr_list = expr.arg
-        expr_code = ("%s%smethod_%s(%s)" %
-                     (_gen_expr_code(obj_expr, is_lvalue = expr.op == "se_op_method"), "." if expr.op == "se_op_method" else "->", method.name,
-                      ", ".join([_gen_expr_code(e) for e in expr_list])))
-        if expr.op.startswith("call_op_method.cmp"):
-            expr_code = "(%s) %s 0" % (expr_code, expr.op[18 :])
-        return expr_code
+        return "%s->method_%s(%s)" % (_gen_expr_code(obj_expr), method.name, ", ".join([_gen_expr_code(e) for e in expr_list]))
     if expr.op == ".":
         obj_expr, attr = expr.arg
         expr_code = "%s->attr_%s" % (_gen_expr_code(obj_expr), attr.name)

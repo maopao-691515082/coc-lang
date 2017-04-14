@@ -6,8 +6,7 @@ public native final class String
 
     public long size();
 
-    public char __op_item_get(long idx);
-    public int __op_cmp(String other);
-    public String __op_add(String s);
-    public String __op_iadd(String s);
+    public char char_at(long index);
+    public int cmp(String other);
+    public String concat(String s);
 }

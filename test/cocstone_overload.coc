@@ -88,7 +88,7 @@ bool Func(String StrParI1, String StrParI2)
     char CharLoc = '\0';
     while (IntLoc <= 1)
     {
-        if (Func(StrParI1[IntLoc], StrParI2[IntLoc + 1]) == Ident1)
+        if (Func(StrParI1.char_at(IntLoc), StrParI2.char_at(IntLoc + 1)) == Ident1)
         {
             CharLoc = 'A';
             ++ IntLoc;
@@ -104,7 +104,7 @@ bool Func(String StrParI1, String StrParI2)
     }
     else
     {
-        if (StrParI1 > StrParI2)
+        if (StrParI1.cmp(StrParI2) > 0)
         {
             IntLoc += 7;
             return true;
@@ -203,7 +203,7 @@ void Proc4()
 
 Record Proc3(Record PtrParOut)
 {
-    if (!(PtrGlb is null))
+    if (PtrGlb != null)
     {
         PtrParOut = PtrGlb.PtrComp;
     }

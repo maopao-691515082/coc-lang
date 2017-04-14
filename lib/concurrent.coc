@@ -1,5 +1,3 @@
-public native final uint DEFAULT_COROUTINE_STACK_SIZE;
-
 public native class Coroutine
 {
     protected Coroutine();

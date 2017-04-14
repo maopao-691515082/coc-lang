@@ -80,12 +80,6 @@ public:
         return m_ptr;
     }
 
-    template <typename A>
-    COC_INLINE void method___op_iadd(const A &a)
-    {
-        (*this) = m_ptr->method___op_iadd(a);
-    }
-
 private:
     T *m_ptr;
 

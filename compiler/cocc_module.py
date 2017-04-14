@@ -11,20 +11,6 @@ import cocc_type
 import cocc_stmt
 import cocc_expr
 
-_INC_DEC_OP_METHOD_NAME_SET = set(["inc", "dec"])
-_UNARY_NUM_OP_METHOD_NAME_SET = set(["inv", "neg", "pos"])
-_UNARY_OP_METHOD_NAME_SET = _INC_DEC_OP_METHOD_NAME_SET | _UNARY_NUM_OP_METHOD_NAME_SET
-_BINOCULAR_NUM_OP_METHOD_NAME_SET = set(["add", "sub", "mul", "div", "mod", "and", "or", "xor", "shl", "shr"])
-_BINOCULAR_NUM_REVERSE_OP_METHOD_NAME_SET = set(["r" + _name for _name in _BINOCULAR_NUM_OP_METHOD_NAME_SET])
-_BINOCULAR_NUM_INPLACE_OP_METHOD_NAME_SET = set(["i" + _name for _name in _BINOCULAR_NUM_OP_METHOD_NAME_SET])
-_BINOCULAR_CMP_OP_METHOD_NAME_SET = set(["eq", "cmp"])
-_BINOCULAR_OP_METHOD_NAME_SET = (set(["item_get"]) | _BINOCULAR_NUM_OP_METHOD_NAME_SET | _BINOCULAR_NUM_REVERSE_OP_METHOD_NAME_SET |
-                                 _BINOCULAR_NUM_INPLACE_OP_METHOD_NAME_SET | _BINOCULAR_CMP_OP_METHOD_NAME_SET)
-_ITEM_INC_DEC_OP_METHOD_NAME_SET = set(["item_inc", "item_dec"])
-_ITEM_ASSIGN_OP_METHOD_NAME_SET = set(["item_set"]) | set(["item_" + _name for _name in _BINOCULAR_NUM_INPLACE_OP_METHOD_NAME_SET])
-_OP_METHOD_NAME_SET = (_UNARY_OP_METHOD_NAME_SET | _BINOCULAR_OP_METHOD_NAME_SET | _ITEM_INC_DEC_OP_METHOD_NAME_SET |
-                       _ITEM_ASSIGN_OP_METHOD_NAME_SET)
-
 builtins_module = None
 module_map = cocc_common.OrderedDict()
 
@@ -143,37 +129,7 @@ class _Method:
         for tp in self.arg_map.itervalues():
             tp.check(self.cls.module, self.cls)
 
-    def _check_op_method(self):
-        if not self.name.startswith("__op_"):
-            return
-        op = self.name[5 :]
-
-        assert op in _OP_METHOD_NAME_SET
-
-        #检查返回类型
-        if op == "eq" and self.type != cocc_type.BOOL_TYPE:
-            self.type.token.syntax_err("%s方法的返回类型必须是bool" % self.name)
-        if op == "cmp" and self.type != cocc_type.INT_TYPE:
-            self.type.token.syntax_err("%s方法的返回类型必须是int" % self.name)
-        if op.startswith("item_") and op != "item_get" and self.type != cocc_type.VOID_TYPE:
-            self.type.token.syntax_err("%s方法的返回类型必须是void" % self.name)
-        if (op in ("inc", "dec", "imod", "ixor", "iand", "imul", "isub", "iadd", "ior", "idiv", "ishl", "ishr") and
-            self.type.get_cls() is not self.cls):
-            self.type.token.syntax_err("%s方法的返回类型必须是当前类" % self.name)
-
-        #检查参数个数
-        if op in _UNARY_OP_METHOD_NAME_SET and len(self.arg_map) != 0:
-            self.type.token.syntax_err("%s方法参数数量只能是0" % self.name)
-        if op in _BINOCULAR_OP_METHOD_NAME_SET and len(self.arg_map) != 1:
-            self.type.token.syntax_err("%s方法参数数量只能是1" % self.name)
-        if op in _ITEM_INC_DEC_OP_METHOD_NAME_SET and len(self.arg_map) != 1:
-            self.type.token.syntax_err("%s方法参数数量只能是1" % self.name)
-        if op in _ITEM_ASSIGN_OP_METHOD_NAME_SET and len(self.arg_map) != 2:
-            self.type.token.syntax_err("%s方法参数数量只能是2" % self.name)
-
     def compile(self):
-        self._check_op_method()
-
         if self.super_construct_expr_list_token_list is None:
             self.super_construct_expr_list, self.super_construct_method = None, None
         else:
@@ -280,11 +236,6 @@ class _Class:
             sym_t, sym = token_list.pop_sym()
             if sym == "(":
                 #方法
-                if name.startswith("__op_"):
-                    if "final" not in self.decr_set:
-                        t.syntax_err("禁止在非final类中实现运算符")
-                    if name[5 :] not in _OP_METHOD_NAME_SET:
-                        t.syntax_err("非法的运算符方法名'%s'" % name)
                 self._parse_method(decr_set, type, name, token_list)
                 continue
             if sym in (";", ","):
@@ -292,8 +243,6 @@ class _Class:
                 if type.name == "void":
                     t.syntax_err("属性类型不可为void")
                 while True:
-                    if name.startswith("__"):
-                        t.syntax_err("属性不可以双下划线开头")
                     if set(["final", "abstract"]) & decr_set:
                         t.syntax_err("属性不可用final或abstract修饰")
                     self.attr_map[name] = _Attr(name, self, decr_set, type)
@@ -303,7 +252,7 @@ class _Class:
                     assert sym == ","
                     t, name = token_list.pop_name()
                     self._check_redefine(t, name)
-                    sym_t, sym = token_list.pop_sym()
+                    t, sym = token_list.pop_sym()
                     if sym not in (";", ","):
                         t.syntax_err()
                 continue
@@ -437,7 +386,7 @@ class _Class:
                             cocc_common.warning("类'%s.%s'的方法'%s'隐藏了在基类'%s.%s'中的其他重载" %
                                                 (self.module.name, self.name, method.name, base_cls.module.name, base_cls.name))
                         else:
-                            assert match_count == 1, "match_count == %d" % match_count
+                            assert match_count == 1
 
     def is_sub_cls_of(self, base_cls):
         cls = self

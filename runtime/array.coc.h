@@ -55,10 +55,6 @@ public:
 
     COC_INLINE ElemType &elem_at(coc_long_t idx)
     {
-        if (idx < 0)
-        {
-            idx += m_size;
-        }
         coc_assert(idx >= 0 && idx < m_size);
         return m_array[idx];
     }

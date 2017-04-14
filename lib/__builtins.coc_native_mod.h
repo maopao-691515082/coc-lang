@@ -10,13 +10,9 @@ class __builtins_$_cls_String : public CocObj
 public:
     coc_long_t method_size();
 
-    coc_char_t method___op_item_get(coc_long_t idx);
-    coc_int_t method___op_cmp(__builtins_$_cls_String *other);
-    CocPtr<__builtins_$_cls_String> method___op_add(__builtins_$_cls_String *other);
-    COC_INLINE CocPtr<__builtins_$_cls_String> method___op_iadd(__builtins_$_cls_String *other)
-    {
-        return method___op_add(other);
-    }
+    coc_char_t method_char_at(coc_long_t idx);
+    coc_int_t method_cmp(__builtins_$_cls_String *other);
+    CocPtr<__builtins_$_cls_String> method_concat(__builtins_$_cls_String *other);
 
     const coc_char_t *data();
 

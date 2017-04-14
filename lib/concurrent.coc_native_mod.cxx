@@ -70,6 +70,11 @@ int concurrent_$_cls_Coroutine::method_start()
     return 0;
 }
 
+int concurrent_$_cls_Coroutine::method_run()
+{
+    return 0;
+}
+
 void concurrent_$_cls_Coroutine::co_entry()
 {
     concurrent_$_cls_Coroutine *co = get_curr_coc_co();

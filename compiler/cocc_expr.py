@@ -10,14 +10,14 @@ import cocc_token
 import cocc_module
 
 _UNARY_OP_SET = set(["~", "!", "neg", "pos", "force_convert"])
-_BINOCULAR_OP_SET = cocc_token.BINOCULAR_OP_SYM_SET | set(["is"])
+_BINOCULAR_OP_SET = cocc_token.BINOCULAR_OP_SYM_SET
 _OP_PRIORITY_LIST = [["?", ":", "?:"],
                      ["||"],
                      ["&&"],
                      ["|"],
                      ["^"],
                      ["&"],
-                     ["==", "!=", "is"],
+                     ["==", "!="],
                      ["<", "<=", ">", ">="],
                      ["<<", ">>"],
                      ["+", "-"],
@@ -71,7 +71,7 @@ class _Expr:
         self.op = op
         self.arg = arg
         self.type = type
-        self.is_lvalue = op in ("this.attr", "super.attr", "global_var", "local_var", "array[]", ".")
+        self.is_lvalue = op in ("this.attr", "super.attr", "global_var", "local_var", "[]", ".")
 
 class _ParseStk:
     #解析表达式时使用的栈
@@ -124,34 +124,21 @@ class _ParseStk:
                     self.start_token.syntax_err("非法的表达式，存在无效的强制类型转换：'%s'到'%s'" % (e.type, tp))
                 self.stk.append(_Expr(op, (tp, e), tp))
             else:
-                push_e = False
-
                 if op in ("neg", "pos"):
-                    if e.type.is_number_type:
-                        if e.type.is_integer_type:
-                            e = _promote_to_int(e)
-                    elif e.type.is_obj_type and not e.type.is_null:
-                        e = _parse_unary_op_method_call(op, self, e)
-                        op = "call_op_method"
-                    else:
+                    if not e.type.is_number_type:
                         self.start_token.syntax_err("非法的表达式：类型'%s'不可做正负运算" % e.type)
+                    if e.type.is_integer_type:
+                        e = _promote_to_int(e)
                 elif op == "!":
                     if not e.type.is_bool_type:
                         self.start_token.syntax_err("非法的表达式：类型'%s'不可做'!'运算" % e.type)
                 elif op == "~":
-                    if e.type.is_integer_type:
-                        e = _promote_to_int(e)
-                    elif e.type.is_obj_type and not e.type.is_null:
-                        e = _parse_unary_op_method_call("inv", self, e)
-                        op = "call_op_method"
-                    else:
+                    if not e.type.is_integer_type:
                         self.start_token.syntax_err("非法的表达式：类型'%s'不可做'~'运算" % e.type)
+                    e = _promote_to_int(e)
                 else:
                     raise Exception("Bug")
-                if push_e:
-                    self.std.append(e)
-                else:
-                    self.stk.append(_Expr(op, e, e.type))
+                self.stk.append(_Expr(op, e, e.type))
 
         elif op in _BINOCULAR_OP_SET:
             #双目运算符
@@ -165,44 +152,28 @@ class _ParseStk:
 
             try:
                 normal_binocular_op = False
-                push_e = False
 
                 if op in ("&&", "||"):
                     if not ea.type.is_bool_type or not eb.type.is_bool_type:
                         self.start_token.syntax_err("非法的表达式：运算'%s'的左右分量必须是bool型" % op)
                     tp = cocc_type.BOOL_TYPE
-                elif op == "is":
+
+                elif op in ("==", "!="):
                     if ea.type.is_obj_type and eb.type.is_obj_type:
                         #地址比较
-                        pass
-                    else:
-                        raise _InvalidBinocularOp()
-                    tp = cocc_type.BOOL_TYPE
-                elif op in ("==", "!="):
-                    if ea.type.is_bool_type and eb.type.is_bool_type:
+                        if op == "!=":
+                            self.op_stk.append("!")
+                        op = "same_obj"
+                    elif ea.type.is_bool_type and eb.type.is_bool_type:
                         pass #bool类型也可直接比较
                     elif ea.type.is_number_type and eb.type.is_number_type:
                         normal_binocular_op = True
-                    elif ea.type.is_obj_type and not ea.type.is_null or eb.type.is_obj_type and not eb.type.is_null:
-                        #对象的==和!=流程比较复杂
-                        e = _parse_eq_method_call(op, self, ea, eb)
-                        if e is None:
-                            raise _InvalidBinocularOp()
-                        push_e = True
                     else:
                         raise _InvalidBinocularOp()
                     tp = cocc_type.BOOL_TYPE
                 elif op in ("+", "-", "*", "/", "<", ">", "<=", ">="):
                     if ea.type.is_number_type and eb.type.is_number_type:
                         normal_binocular_op = True
-                    elif ea.type.is_obj_type and not ea.type.is_null or eb.type.is_obj_type and not eb.type.is_null:
-                        if op in ("<", ">", "<=", ">="):
-                            e = _parse_cmp_method_call(op, self, ea, eb)
-                        else:
-                            e = _parse_num_op_method_call(op, self, ea, eb)
-                        if e is None:
-                            raise _InvalidBinocularOp()
-                        push_e = True
                     else:
                         raise _InvalidBinocularOp()
                     if op in ("<", ">", "<=", ">="):
@@ -212,11 +183,6 @@ class _ParseStk:
                 elif op in ("%", "&", "|", "^"):
                     if ea.type.is_integer_type and eb.type.is_integer_type:
                         normal_binocular_op = True
-                    elif ea.type.is_obj_type and not ea.type.is_null or eb.type.is_obj_type and not eb.type.is_null:
-                        e = _parse_num_op_method_call(op, self, ea, eb)
-                        if e is None:
-                            raise _InvalidBinocularOp()
-                        push_e = True
                     else:
                         raise _InvalidBinocularOp()
                     tp = None
@@ -224,11 +190,6 @@ class _ParseStk:
                     if ea.type.is_integer_type and eb.type.is_integer_type:
                         ea = _promote_to_int(ea)
                         eb = _promote_to_int(eb)
-                    elif ea.type.is_obj_type and not ea.type.is_null or eb.type.is_obj_type and not eb.type.is_null:
-                        e = _parse_num_op_method_call(op, self, ea, eb)
-                        if e is None:
-                            raise _InvalidBinocularOp()
-                        push_e = True
                     else:
                         raise _InvalidBinocularOp()
                     tp = ea.type
@@ -236,7 +197,6 @@ class _ParseStk:
                     raise Exception("Bug")
 
                 if normal_binocular_op:
-                    assert not push_e
                     if ea.type != eb.type:
                         try:
                             ea, eb = _make_type_same(ea, eb)
@@ -250,11 +210,8 @@ class _ParseStk:
                     assert ea.type == eb.type
                     if tp is None:
                         tp = ea.type
-                if push_e:
-                    self.stk.append(e)
-                else:
-                    assert tp is not None
-                    self.stk.append(_Expr(op, (ea, eb), tp))
+                assert tp is not None
+                self.stk.append(_Expr(op, (ea, eb), tp))
 
             except _InvalidBinocularOp:
                 self.start_token.syntax_err("非法的表达式：类型'%s'和'%s'无法做'%s'运算" % (ea.type, eb.type, op))
@@ -362,6 +319,7 @@ def _match_arg_list(expr_list, arg_map):
     return True, full_matched
 
 _MULTI_CALLEE_FOUND = object()
+
 def _match_callee(arg_start_token, callee_list, expr_list):
     if len(callee_list) == 1:
         callee = callee_list[0]
@@ -391,12 +349,10 @@ def _parse_call_expr(token_list, var_map_list, cls, curr_module, callee_list):
     expr_list = _parse_expr_list(token_list, var_map_list, cls, curr_module)
     return _match_callee(arg_start_token, callee_list, expr_list)
 
-def _parse_method_call(t, method_list, expr_list, cls, curr_module, ret_None_method_if_not_found = False):
+def _parse_method_call(t, method_list, expr_list, cls, curr_module):
     assert method_list
     t, method, expr_list = _match_callee(t, method_list, expr_list)
     if method is None:
-        if ret_None_method_if_not_found:
-            return None, expr_list
         t.syntax_err("找不到匹配的方法'%s.%s.%s(%s)'" %
                      (method_list[0].cls.module.name, method_list[0].cls.name, method_list[0].name,
                       ", ".join([str(e.type) for e in expr_list])))
@@ -415,85 +371,6 @@ def _parse_method_call(t, method_list, expr_list, cls, curr_module, ret_None_met
                              (method.cls.module.name, method.cls.name, method.name,
                               ", ".join([str(tp) for tp in method.arg_map.itervalues()])))
     return method, expr_list
-
-def _parse_unary_op_method_call(op, parse_stk, e):
-    method_name = "__op_" + op
-    method_list, attr = e.type.get_cls().get_method_or_attr(method_name, parse_stk.start_token)
-    assert attr is None
-    assert method_list
-    method, expr_list = _parse_method_call(parse_stk.start_token, method_list, [], parse_stk.cls, parse_stk.curr_module)
-    assert not expr_list
-    return _Expr("call_op_method", (e, method, []), method.type)
-
-def _parse_eq_method_call(op, parse_stk, ea, eb, try_reverse_op = True):
-    assert op in ("==", "!=")
-    assert ea.type.is_obj_type and not ea.type.is_null or eb.type.is_obj_type and not eb.type.is_null
-    if ea.type.is_obj_type and not ea.type.is_null:
-        obj_cls = ea.type.get_cls()
-        for method_name in "__op_eq", "__op_cmp":
-            if obj_cls.has_method_or_attr(method_name):
-                method_list, attr = obj_cls.get_method_or_attr(method_name, parse_stk.start_token)
-                assert attr is None
-                assert method_list
-                method, expr_list = _parse_method_call(parse_stk.start_token, method_list, [eb], parse_stk.cls, parse_stk.curr_module,
-                                                       ret_None_method_if_not_found = True)
-                if method is not None:
-                    if method.name == "__op_eq":
-                        assert method.type == cocc_type.BOOL_TYPE
-                        e = _Expr("call_op_method", (ea, method, expr_list), method.type)
-                        if op == "!=":
-                            e = _Expr("!", e, e.type)
-                    else:
-                        assert method.name == "__op_cmp"
-                        assert method.type == cocc_type.INT_TYPE
-                        return _Expr("call_op_method.cmp" + op, (ea, method, expr_list), cocc_type.BOOL_TYPE)
-                    return e
-    if try_reverse_op and eb.type.is_obj_type and not eb.type.is_null:
-        return _parse_eq_method_call(op, parse_stk, eb, ea, try_reverse_op = False)
-    else:
-        return None
-
-def _parse_cmp_method_call(op, parse_stk, ea, eb, try_reverse_op = True):
-    assert op in ("<", ">", "<=", ">=")
-    assert ea.type.is_obj_type and not ea.type.is_null or eb.type.is_obj_type and not eb.type.is_null
-    if ea.type.is_obj_type and not ea.type.is_null:
-        obj_cls = ea.type.get_cls()
-        if obj_cls.has_method_or_attr("__op_cmp"):
-            method_list, attr = obj_cls.get_method_or_attr("__op_cmp", parse_stk.start_token)
-            assert attr is None
-            assert method_list
-            method, expr_list = _parse_method_call(parse_stk.start_token, method_list, [eb], parse_stk.cls, parse_stk.curr_module,
-                                                   ret_None_method_if_not_found = True)
-            if method is not None:
-                assert method.type == cocc_type.INT_TYPE
-                return _Expr("call_op_method.cmp" + op, (ea, method, expr_list), cocc_type.BOOL_TYPE)
-    if try_reverse_op and eb.type.is_obj_type and not eb.type.is_null:
-        return _parse_cmp_method_call({"<" : ">", ">" : "<", "<=" : ">=", ">=" : "<="}[op], parse_stk, eb, ea, try_reverse_op = False)
-    else:
-        return None
-
-def _parse_num_op_method_call(op, parse_stk, ea, eb, try_reverse_op = True):
-    assert op in ("+", "-", "*", "/", "%", "&", "|", "^", "<<", ">>")
-    op_name = {"+" : "add", "-" : "sub", "*" : "mul", "/" : "div", "%" : "mod", "&" : "and", "|" : "or", "^" : "xor", "<<" : "shl",
-               ">>" : "shr"}[op]
-    if not try_reverse_op:
-        op_name = "r" + op_name
-    assert ea.type.is_obj_type and not ea.type.is_null or eb.type.is_obj_type and not eb.type.is_null
-    if ea.type.is_obj_type and not ea.type.is_null:
-        obj_cls = ea.type.get_cls()
-        method_name = "__op_" + op_name
-        if obj_cls.has_method_or_attr(method_name):
-            method_list, attr = obj_cls.get_method_or_attr(method_name, parse_stk.start_token)
-            assert attr is None
-            assert method_list
-            method, expr_list = _parse_method_call(parse_stk.start_token, method_list, [eb], parse_stk.cls, parse_stk.curr_module,
-                                                   ret_None_method_if_not_found = True)
-            if method is not None:
-                return _Expr("call_op_method" + op, (ea, method, expr_list), method.type)
-    if try_reverse_op and eb.type.is_obj_type and not eb.type.is_null:
-        return _parse_num_op_method_call(op, parse_stk, eb, ea, try_reverse_op = False)
-    else:
-        return None
 
 def _parse_method_or_attr_of_this_cls((t, name), token_list, var_map_list, cls, curr_module, is_super = False):
     assert cls is not None
@@ -545,8 +422,7 @@ def _parse_func_or_global_var(m, (t, name), token_list, var_map_list, cls, curr_
         t.syntax_err("无法使用全局变量'%s.%s'：没有权限" % (m.name, name))
     return _Expr("global_var", global_var, global_var.type)
 
-def parse_expr(token_list, var_map_list, cls, curr_module, convert_type, inc_dec_op = None):
-    assert inc_dec_op in (None, "++", "--")
+def parse_expr(token_list, var_map_list, cls, curr_module, convert_type):
     start_token = token_list.peek()
     parse_stk = _ParseStk(start_token, cls, curr_module)
     while True:
@@ -697,52 +573,12 @@ def parse_expr(token_list, var_map_list, cls, curr_module, convert_type, inc_dec
         while token_list:
             t = token_list.pop()
             if t.is_sym("["):
-                obj_expr = parse_stk.stk[-1]
-                if obj_expr.type.is_array:
-                    expr = parse_expr(token_list, var_map_list, cls, curr_module, cocc_type.LONG_TYPE)
-                    token_list.pop_sym("]")
-                    parse_stk.stk[-1] = _Expr("array[]", [obj_expr, expr], obj_expr.type.to_elem_type())
-                else:
-                    if obj_expr.type.token.is_reserved:
-                        t.syntax_err("'%s'不能进行下标运算" % obj_expr.type)
-                    assert obj_expr.type.is_obj_type
-                    obj_cls = obj_expr.type.get_cls()
-
-                    expr = parse_expr(token_list, var_map_list, cls, curr_module, None)
-                    token_list.pop_sym("]")
-
-                    #检查下是否是用于副作用表达式
-                    if token_list.peek().is_sym and token_list.peek().value in (";", ","):
-                        #只有当此下标运算是全表达式末尾时，才考虑inc_dec_op
-                        se_op = inc_dec_op
-                    else:
-                        se_op = None
-                    if se_op is None:
-                        se_op_token = token_list.peek()
-                        if se_op_token.is_sym and se_op_token.value in (cocc_token.ASSIGN_SYM_SET | cocc_token.INC_DEC_SYM_SET):
-                            se_op = se_op_token.value
-
-                    #做个转换
-                    se_op = {None : "get",
-                             "++" : "inc", "--" : "dec",
-                             "=" : "set", "%=" : "imod", "^=" : "ixor", "&=" : "iand", "*=" : "imul", "-=" : "isub", "+=" : "iadd",
-                             "|=" : "ior", "/=" : "idiv", "<<=" : "ishl", ">>=" : "ishr"}[se_op]
-
-                    #编译为对应方法的调用
-                    method_name = "__op_item_" + se_op
-                    method_list, attr = obj_cls.get_method_or_attr(method_name, t)
-                    assert attr is None
-                    assert method_list
-                    if se_op in ("get", "inc", "dec"):
-                        #取值和元素自增操作
-                        expr_list = [expr]
-                    else:
-                        #赋值类操作
-                        token_list.pop_sym()
-                        rvalue = parse_expr(token_list, var_map_list, cls, curr_module, None)
-                        expr_list = [expr, rvalue]
-                    method, expr_list = _parse_method_call(t, method_list, expr_list, cls, curr_module)
-                    parse_stk.stk[-1] = _Expr("call_op_method", (obj_expr, method, expr_list), method.type)
+                expr = parse_expr(token_list, var_map_list, cls, curr_module, cocc_type.LONG_TYPE)
+                token_list.pop_sym("]")
+                array_expr = parse_stk.stk[-1]
+                if not array_expr.type.is_array:
+                    t.syntax_err("'%s'不能进行下标运算" % array_expr.type)
+                parse_stk.stk[-1] = _Expr("[]", [array_expr, expr], array_expr.type.to_elem_type())
             elif t.is_sym("."):
                 obj = parse_stk.stk[-1]
                 if obj.type.array_dim_count > 0:
@@ -862,7 +698,7 @@ def parse_expr(token_list, var_map_list, cls, curr_module, convert_type, inc_dec
 
         #状态：解析普通二元/三元运算符
         t = token_list.pop()
-        if t.is_reserved("is") or (t.is_sym and (t.value in _BINOCULAR_OP_SET or t.value in ("?", ":"))):
+        if t.is_sym and (t.value in _BINOCULAR_OP_SET or t.value in ("?", ":")):
             #二元运算
             parse_stk.push_op(t.value)
         else:
@@ -906,23 +742,3 @@ def parse_super_construct_expr_list(method):
                                     ", ".join([str(tp) for tp in base_construct_method.arg_map.itervalues()])))
 
     return expr_list, base_construct_method
-
-def build_obj_se_expr(lvalue, op_token, cls, curr_module, expr = None):
-    assert op_token.is_sym
-    op = op_token.value
-    assert lvalue.type.is_obj_type and not lvalue.type.is_null
-    assert op in (cocc_token.ASSIGN_SYM_SET | cocc_token.INC_DEC_SYM_SET) and op != "="
-    if op in cocc_token.INC_DEC_SYM_SET:
-        assert expr is None
-    else:
-        assert expr is not None
-
-    op = {"++" : "inc", "--" : "dec", "%=" : "imod", "^=" : "ixor", "&=" : "iand", "*=" : "imul", "-=" : "isub", "+=" : "iadd", "|=" : "ior",
-          "/=" : "idiv", "<<=" : "ishl", ">>=" : "ishr"}[op]
-
-    obj_cls = lvalue.type.get_cls()
-    method_list, attr = obj_cls.get_method_or_attr("__op_" + op, op_token)
-    assert attr is None
-    assert method_list
-    method, expr_list = _parse_method_call(op_token, method_list, [] if expr is None else [expr], cls, curr_module)
-    return _Expr("se_op_method", (lvalue, method, expr_list), None)

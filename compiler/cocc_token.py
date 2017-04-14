@@ -33,7 +33,7 @@ _SYM_SET = set("""~!%^&*()-+|{}[]:;"'<,>.?/""") | set(["!=", "==", "<<", "<=", "
 #±£Áô×Ö¼¯
 _RESERVED_WORD_SET = set(["import", "class", "void", "bool", "byte", "ubyte", "char", "short", "ushort", "int", "uint", "long", "ulong",
                           "float", "double", "ldouble", "for", "while", "do", "if", "else", "return", "null", "true", "false", "break",
-                          "continue", "this", "super", "public", "protected", "private", "interface", "new", "final", "native", "ref", "is",
+                          "continue", "this", "super", "public", "protected", "private", "interface", "new", "final", "native", "ref",
                           "typedef", "abstract"])
 
 class _Token:

@@ -16,37 +16,21 @@ public:
         m_vec.resize((size_t)sz);
     }
 
-    ElemType method___op_item_get(coc_long_t idx)
+    ElemType method_get(coc_long_t idx)
     {
-        idx = convert_and_check_idx(idx);
+        coc_assert(idx >= 0 && (coc_ulong_t)idx < m_vec.size());
         return m_vec[(size_t)idx];
     }
 
-    void method___op_item_set(coc_long_t idx, ElemRawType elem)
+    void method_set(coc_long_t idx, ElemRawType elem)
     {
-        idx = convert_and_check_idx(idx);
+        coc_assert(idx >= 0 && (coc_ulong_t)idx < m_vec.size());
         m_vec[(size_t)idx] = elem;
-    }
-
-    void method___op_item_inc(coc_long_t idx)
-    {
-        idx = convert_and_check_idx(idx);
-        inc_coc_obj(m_vec[(size_t)idx]);
     }
 
 private:
     ~util_$_cls_Vector()
     {
-    }
-
-    COC_INLINE coc_long_t convert_and_check_idx(coc_long_t idx)
-    {
-        if (idx < 0)
-        {
-            idx += m_vec.size();
-        }
-        coc_assert(idx >= 0 && (coc_ulong_t)idx < m_vec.size());
-        return idx;
     }
 
     std::vector<ElemType> m_vec;

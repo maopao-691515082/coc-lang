@@ -49,7 +49,6 @@ typedef long double coc_ldouble_t;
 
 #include "obj.coc.h"
 #include "array.coc.h"
-#include "op.coc.h"
 
 #include "__builtins.coc_mod.h"
 

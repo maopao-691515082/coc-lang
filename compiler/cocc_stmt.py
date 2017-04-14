@@ -65,13 +65,12 @@ class _StmtList(list):
         def analyze_refed_var(expr):
             updated = False
 
-            if (expr.op in ("call_super.method", "call_this.method", "call_func", "new", "call_method", "se_op_method") or
-                expr.op.startswith("call_op_method")):
+            if expr.op in ("call_super.method", "call_this.method", "call_func", "new", "call_method"):
                 sub_expr_list = []
                 if expr.op == "new":
                     expr_list, method = expr.arg
                     arg_map = method.arg_map
-                elif expr.op in ("call_method", "se_op_method") or expr.op.startswith("call_op_method"):
+                elif expr.op == "call_method":
                     obj_expr, callee, expr_list = expr.arg
                     sub_expr_list.append(obj_expr)
                     arg_map = callee.arg_map
@@ -102,7 +101,7 @@ class _StmtList(list):
                 sub_expr_list = [expr.arg]
             elif expr.op == "force_convert":
                 sub_expr_list = [expr.arg[1]]
-            elif expr.op in cocc_token.BINOCULAR_OP_SYM_SET or expr.op in ("?:", "array[]", "is"):
+            elif expr.op in cocc_token.BINOCULAR_OP_SYM_SET or expr.op in ("?:", "[]", "same_obj"):
                 sub_expr_list = expr.arg
             elif expr.op == "new_array":
                 sub_expr_list = [e for e in expr.arg[1] if e is not None]
@@ -148,11 +147,6 @@ class _StmtList(list):
                                 if isinstance(expr, _SeExpr) and expr.lvalue.op == "local_var":
                                     if analyze_var_assign(expr.lvalue.arg, expr.expr):
                                         this_turn_updated = True
-                                if expr.op == "se_op_method":
-                                    lvalue, _, _ = expr.arg
-                                    if lvalue.op == "local_var" and lvalue.arg not in stmt_list.shared_ptr_var_set:
-                                        stmt_list.shared_ptr_var_set.add(lvalue.arg)
-                                        this_turn_updated = True
                         else:
                             assert len(stmt.for_var_map) == len(stmt.init_expr_list)
                             for i, var_name in enumerate(stmt.for_var_map):
@@ -167,11 +161,6 @@ class _StmtList(list):
                         for expr in stmt.loop_expr_list:
                             if isinstance(expr, _SeExpr) and expr.lvalue.op == "local_var":
                                 if analyze_var_assign(expr.lvalue.arg, expr.expr):
-                                    this_turn_updated = True
-                            if expr.op == "se_op_method":
-                                lvalue, _, _ = expr.arg
-                                if lvalue.op == "local_var" and lvalue.arg not in stmt_list.shared_ptr_var_set:
-                                    stmt_list.shared_ptr_var_set.add(lvalue.arg)
                                     this_turn_updated = True
                             if analyze_refed_var(expr):
                                 this_turn_updated = True
@@ -199,11 +188,6 @@ class _StmtList(list):
                 elif stmt.type == "expr":
                     if isinstance(stmt.expr, _SeExpr) and stmt.expr.lvalue.op == "local_var":
                         if analyze_var_assign(stmt.expr.lvalue.arg, stmt.expr.expr):
-                            this_turn_updated = True
-                    if stmt.expr.op == "se_op_method":
-                        lvalue, _, _ = stmt.expr.arg
-                        if lvalue.op == "local_var" and lvalue.arg not in stmt_list.shared_ptr_var_set:
-                            stmt_list.shared_ptr_var_set.add(lvalue.arg)
                             this_turn_updated = True
                     if analyze_refed_var(stmt.expr):
                         this_turn_updated = True
@@ -241,19 +225,7 @@ def _parse_expr_with_se(token_list, var_map_list, cls, module):
                 t.syntax_err("全局变量'%s.%s'不可修改" % (global_var.module.name, global_var.name))
 
     def build_inc_dec_expr(op, lvalue, t):
-        assert op in ("++", "--")
-        if lvalue.op == "call_op_method":
-            _, method, _ = lvalue.arg
-            if method.name.startswith("__op_item_"):
-                se_op = method.name[10 :]
-                if op == "++":
-                    assert se_op == "inc"
-                else:
-                    assert se_op == "dec"
-                return lvalue
         check_lvalue(lvalue)
-        if lvalue.type.is_obj_type:
-            return cocc_expr.build_obj_se_expr(lvalue, t, cls, module)
         if not lvalue.type.can_inc_dec:
             t.syntax_err("类型'%s'不可做'%s'操作" % (lvalue.type, op))
         return _SeExpr(lvalue, op, None)
@@ -264,7 +236,7 @@ def _parse_expr_with_se(token_list, var_map_list, cls, module):
         op = t.value
         token_list.pop_sym(op)
         t = token_list.peek()
-        return build_inc_dec_expr(op, cocc_expr.parse_expr(token_list, var_map_list, cls, module, None, inc_dec_op = op), t)
+        return build_inc_dec_expr(op, cocc_expr.parse_expr(token_list, var_map_list, cls, module, None), t)
 
     expr = cocc_expr.parse_expr(token_list, var_map_list, cls, module, None)
     t = token_list.pop()
@@ -275,19 +247,6 @@ def _parse_expr_with_se(token_list, var_map_list, cls, module):
 
     if t.is_sym and t.value in cocc_token.ASSIGN_SYM_SET:
         #赋值
-        if expr.op == "call_op_method":
-            _, method, _ = expr.arg
-            if method.name.startswith("__op_item_"):
-                t.syntax_err("需要','或';'")
-
-        lvalue = expr
-        check_lvalue(lvalue)
-
-        if t.value != "=" and lvalue.type.is_obj_type:
-            assert t.value.endswith("=")
-            expr = cocc_expr.parse_expr(token_list, var_map_list, cls, module, None)
-            return cocc_expr.build_obj_se_expr(lvalue, t, cls, module, expr)
-
         if t.value != "=":
             assert t.value.endswith("=")
             op = t.value[: -1]
@@ -297,18 +256,20 @@ def _parse_expr_with_se(token_list, var_map_list, cls, module):
 
             try:
                 if op in ("+", "-", "*", "/"):
-                    if not lvalue.type.is_number_type:
+                    if not expr.type.is_number_type:
                         raise _InvalidType()
                 elif op in ("%", "&", "|", "^", "<<", ">>"):
-                    if not lvalue.type.is_integer_type:
+                    if not expr.type.is_integer_type:
                         raise _InvalidType()
                 else:
                     raise Exception("Bug")
 
             except _InvalidType:
-                t.syntax_err("类型'%s'无法做增量赋值'%s'" % (lvalue.type, t.value))
+                t.syntax_err("类型'%s'无法做增量赋值'%s'" % (expr.type, t.value))
 
         op = t.value
+        lvalue = expr
+        check_lvalue(lvalue)
         if op in ("<<=", ">>="):
             convert_type = [cocc_type.INT_TYPE, cocc_type.UINT_TYPE]
         else:
@@ -388,7 +349,6 @@ def parse_stmt_list(token_list, module, cls, var_map_list, loop_deep, ret_type):
         if t.is_reserved and t.value in ("break", "continue"):
             if loop_deep == 0:
                 t.syntax_err("循环外的'%s'" % t.value)
-            token_list.pop_sym(";")
             stmt_list.append(_Stmt(t.value))
             continue
         if t.is_reserved("return"):
