@@ -72,7 +72,7 @@ CocPtr<socket_$_cls_SocketError> socket_$_cls_TcpSocket::method_send_all(__built
 
     while (sz > 0)
     {
-        ssize_t send_len = send(m_sock_fd, buf, sz, 0);
+        ssize_t send_len = send(m_sock_fd, buf, (size_t)sz, 0);
         if (send_len >= 0)
         {
             buf += send_len;

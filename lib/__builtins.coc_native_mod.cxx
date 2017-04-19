@@ -22,7 +22,7 @@ coc_char_t __builtins_$_cls_String::method_char_at(coc_long_t idx)
 
 coc_int_t __builtins_$_cls_String::method_cmp(__builtins_$_cls_String *other)
 {
-    int rc = memcmp(m_data, other->m_data, m_sz < other->m_sz ? m_sz : other->m_sz);
+    int rc = memcmp(m_data, other->m_data, (size_t)(m_sz < other->m_sz ? m_sz : other->m_sz));
     if (rc < 0)
     {
         return -1;
@@ -46,8 +46,8 @@ CocPtr<__builtins_$_cls_String> __builtins_$_cls_String::method_concat(__builtin
 {
     coc_long_t sz = m_sz + other->m_sz;
     coc_char_t *new_data = new coc_char_t[sz + 1];
-    memcpy(new_data, m_data, m_sz);
-    memcpy(new_data + m_sz, other->m_data, other->m_sz);
+    memcpy(new_data, m_data, (size_t)m_sz);
+    memcpy(new_data + m_sz, other->m_data, (size_t)other->m_sz);
     new_data[sz] = '\0';
 
     __builtins_$_cls_String *new_str = new __builtins_$_cls_String();
@@ -67,7 +67,7 @@ __builtins_$_cls_String::__builtins_$_cls_String()
 
 __builtins_$_cls_String::__builtins_$_cls_String(const char *s)
 {
-    _init(s, strlen(s));
+    _init(s, (coc_long_t)strlen(s));
 }
 
 __builtins_$_cls_String::__builtins_$_cls_String(const char *buf, coc_long_t sz)
@@ -79,7 +79,7 @@ void __builtins_$_cls_String::_init(const char *buf, coc_long_t sz)
 {
     coc_assert(sz >= 0);
     m_data = new coc_char_t[sz + 1];
-    memcpy(m_data, buf, sz);
+    memcpy(m_data, buf, (size_t)sz);
     m_data[sz] = '\0';
     m_sz = sz;
 }

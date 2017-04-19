@@ -34,7 +34,7 @@ coc_int_t io_$_cls_File::method_write(__builtins_$_cls_String *s)
     coc_long_t left_count = s->method_size();
     while (left_count > 0)
     {
-        coc_long_t write_count = fwrite(data + pos, 1, left_count, m_fp);
+        coc_long_t write_count = (coc_long_t)fwrite(data + pos, 1, (size_t)left_count, m_fp);
         if (ferror(m_fp))
         {
             return -2;

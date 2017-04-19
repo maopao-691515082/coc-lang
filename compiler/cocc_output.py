@@ -560,8 +560,10 @@ def _copy_runtime():
 def _gen_makefile(main_module_name):
     f = open(os.path.join(out_dir, "Makefile"), "w")
     print >> f, "all:"
-    print >> f, ("\tg++ -Wall -pipe -ggdb3 -O2 -fno-strict-aliasing -fPIC -pthread -lrt -rdynamic -Wno-address -Wswitch-default -Wfloat-equal "
-                 "-Winvalid-pch -Wvariadic-macros -Wvolatile-register-var -Wcast-align -Wwrite-strings -Wshadow -Wno-deprecated -std=gnu++0x "
+    print >> f, ("\tg++ -pipe -ggdb3 -O2 -fno-strict-aliasing -fPIC -pthread -lrt -rdynamic -std=gnu++0x "
+                 "-Wall -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wsign-promo -Winit-self -Wmissing-include-dirs -Wswitch-default "
+                 "-Wswitch-enum -Wunknown-pragmas -Wundef -Wpointer-arith -Wcast-qual -Wcast-align -Wconversion -Wsign-conversion "
+                 "-Wlogical-op -Winvalid-pch -Wvla "
                  "-o %s *.cpp" % main_module_name)
 
 def output(main_module_name):

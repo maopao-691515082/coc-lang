@@ -177,7 +177,7 @@ void Proc4()
 
 Record Proc3(Record PtrParOut)
 {
-    if (PtrGlb is null)
+    if (PtrGlb != null)
     {
         PtrParOut = PtrGlb.PtrComp;
     }
