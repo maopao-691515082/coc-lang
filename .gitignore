@@ -1,0 +1,6 @@
+.DS_Store
+*.pyc
+/test/*
+!/test/*.coc
+test/test.coc
+.vscode
