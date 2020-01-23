@@ -13,7 +13,7 @@ public void main()
     verbose_log("开始");
 
     //解析选项和参数
-    debug.assert(args.len() == 1, "");
+    debug.assert(args.size() == 1, "");
     var main_mod_name   = args[0],
         coc_dir         = opt_map.get("--coc_dir"),
         std_lib_dir     = "%s/lib".(coc_dir),
