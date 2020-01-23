@@ -49,13 +49,13 @@ def main():
     cocc_bin = tmp_bin_dir + "/cocc"
 
     if not os.path.isfile(cocc_bin) or need_rebuild_cocc:
-        ret = os.system("larvac %s -o %s -m github.com/maopao-691515082/coc-lang/cocc" % (verbose_opt, cocc_bin))
+        ret = os.system("larvac %s -u -o %s -m github.com/maopao-691515082/coc-lang/cocc" % (verbose_opt, cocc_bin))
         if ret != 0 or not os.path.isfile(cocc_bin):
             _exit("构建cocc失败")
 
     out_dir = coc_dir + "/tmp/out/" + mod_name
 
-    ret = os.system("%s %s --std_lib_dir %s --usr_lib_dir %s %s" % (cocc_bin, verbose_opt, std_lib_dir, usr_lib_dir, mod_name))
+    ret = os.system("%s %s --coc_dir %s --usr_lib_dir %s -- %s" % (cocc_bin, verbose_opt, coc_dir, usr_lib_dir, mod_name))
     if ret != 0 or not os.path.isdir(out_dir):
         _exit("cocc编译失败")
 

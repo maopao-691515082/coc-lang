@@ -1,6 +1,35 @@
-import os;
+import os, util, debug, util/iters;
 
 public void main()
 {
-    
+    defer handle_exc<ExitSignal>(nil);
+
+    //解析命令行
+    util.HashMap<String, String> opt_map;
+    var args = os.args.parse("v", new String[]{"coc_dir=", "usr_lib_dir="}, ref opt_map);
+
+    //初始化内部日志
+    using_verbose_mode = opt_map.contains_key("-v");
+    verbose_log("开始");
+
+    //解析选项和参数
+    debug.assert(args.len() == 1, "");
+    var main_mod_name   = args[0],
+        coc_dir         = opt_map.get("--coc_dir"),
+        std_lib_dir     = "%s/lib".(coc_dir),
+        out_dir         = "%s/tmp/out/%s".(coc_dir, main_mod_name),
+        usr_lib_dir     = opt_map.get("--usr_lib_dir");
+
+    //检查主模块名
+    var main_mod_name_parts = main_mod_name.split("/");
+    if (main_mod_name_parts.size() == 0 || !iters.all(iters.map(main_mod_name_parts.iter(), []{
+        public bool convert(String s)
+        {
+            return is_valid_name(s);
+        }
+    })))
+    {
+        exit("无效的主模块名‘%s’".(main_mod_name));
+    }
+
 }
