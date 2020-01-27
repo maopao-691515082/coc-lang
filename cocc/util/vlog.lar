@@ -1,3 +1,7 @@
+import
+    time,
+;
+
 bool using_vmode = false;
 
 public void enable_vmode()

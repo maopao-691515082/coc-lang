@@ -1,5 +1,6 @@
 import
     util,
+    os,
     os/path,
     util/iters,
 ;
@@ -37,7 +38,7 @@ public class Mod
 
         this.dep_mod_map_map = new util.HashMap<String, util.HashMap<String, String>>(nil);
 
-        this.this.cls_map   = new util.HashMap<String, Cls>(nil);
+        this.cls_map   = new util.HashMap<String, Cls>(nil);
         this.gcls_map       = new util.HashMap<String, Gcls>(nil);
         this.gcls_inst_map  = new util.HashMap<String, GclsInst>(nil);
         this.intf_map       = new util.HashMap<String, Intf>(nil);
@@ -59,18 +60,18 @@ public class Mod
                 return fn.has_suffix(".coc");
             }
         }));
-        foreach (var fn: fns.iter())
+        foreach (var fn: src_fns.iter())
         {
             var full_fn = "%s/%s".(this.dir, fn);
             if (!os.lstat(full_fn).is_file())
             {
-                exit("[%s]需要是一个文件".(full_fn));
+                cocc_util.exit("[%s]需要是一个文件".(full_fn));
             }
 
             var token_list = cocc_token.parse_token_list(full_fn);
 
             var dep_mod_map = new util.HashMap<String, String>(nil);
-            dep_mod_map_map.set(fn, dep_mod_map);
+            this.dep_mod_map_map.set(fn, dep_mod_map);
 
             var import_end = false;
             while (!token_list.end())

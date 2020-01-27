@@ -63,7 +63,7 @@ public void main()
         {
             var ts = time.time();
             step.call();
-            cocc_util.vlog("步骤[%s]处理完毕，耗时%.2f秒".(time.time() - ts));
+            cocc_util.vlog("步骤[%s]处理完毕，耗时%.2f秒".(step_name, time.time() - ts));
         }
     };
 
