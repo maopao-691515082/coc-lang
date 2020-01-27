@@ -9,7 +9,7 @@ String std_lib_dir, usr_lib_dir;
 
 public void set_lib_dirs(String _std_lib_dir, String _usr_lib_dir)
 {
-    cocc_common.assert(std_lib_dir === nil && usr_lib_dir === nil && _std_lib_dir !== nil && _usr_lib_dir !== nil);
+    cocc_util.assert(std_lib_dir === nil && usr_lib_dir === nil && _std_lib_dir !== nil && _usr_lib_dir !== nil);
     std_lib_dir = _std_lib_dir;
     usr_lib_dir = _usr_lib_dir;
 }
@@ -24,5 +24,5 @@ String find_mod_path(String mod_name)
             return mp;
         }
     }
-    exit("找不到模块[%s]".(mod_name));
+    cocc_util.exit("找不到模块[%s]".(mod_name));
 }

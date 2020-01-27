@@ -29,7 +29,7 @@ public class TokenList
         var new_tl = new util.Vector<Token>(nil);
 
         util.Vector<String> merging_strs;   //合并过程中的临时字符串列表
-        var merge = [-]{
+        var merge = []{
             void do()
             {
                 if (merging_strs !== nil)
@@ -118,13 +118,13 @@ public class TokenList
     }
 }
 
-public TokenList parse_token_list(String fn)
+public TokenList parse_token_list(String src_fn)
 {
-    var src_f = new bufio.File(fn, "r");
+    var src_f = new bufio.File(src_fn, "r");
     defer src_f.close();
 
     var lines       = src_f.read_lines(),
-        token_list  = new TokenList(fn),
+        token_list  = new TokenList(src_fn),
         in_comment  = false,
         raw_str     = cast<RawStr>(nil),
     ;
@@ -160,7 +160,7 @@ public TokenList parse_token_list(String fn)
             raw_str.value = raw_str.value.concat(line.sub_str(0, pos));
             token_list.append(new Token{
                 type:       TOKEN_TYPE_LITERAL_STR,
-                value:      raw_str.value,
+                _value:     raw_str.value,
                 src_fn:     src_fn,
                 line_idx:   raw_str.line_idx,
                 pos:        raw_str.pos,
@@ -228,7 +228,7 @@ public TokenList parse_token_list(String fn)
                 raw_str.value = line.sub_str(pos, pos + end_pos);
                 token_list.append(new Token{
                     type:       TOKEN_TYPE_LITERAL_STR,
-                    value:      raw_str.value,
+                    _value:     raw_str.value,
                     src_fn:     src_fn,
                     line_idx:   raw_str.line_idx,
                     pos:        raw_str.pos,

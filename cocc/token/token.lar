@@ -150,7 +150,7 @@ Token parse_token(String src_fn, long line_idx, String line, ref long pos)
                 {
                     cocc_util.assert(group.first() == 0 && group.second() == token_len);
 
-                    var token_pos = pos;
+                    var token_pos = pos,
                         token_value = s.sub_str(0, token_len);
 
                     pos += token_len;   //对大部分token是如此，但字符串之类的需要手工解析的在下面流程中再调整
@@ -165,7 +165,7 @@ Token parse_token(String src_fn, long line_idx, String line, ref long pos)
                         {
                             return new Token{
                                 type:       type,
-                                value:      value,
+                                _value:     value,
                                 src_fn:     src_fn,
                                 line_idx:   line_idx,
                                 pos:        token_pos,
@@ -182,7 +182,7 @@ Token parse_token(String src_fn, long line_idx, String line, ref long pos)
                             v = token_value.parse_double();
                             if (math.is_inf(v) || math.is_nan(v))
                             {
-                                throw(ValueError(""));
+                                throw(new ValueError(""));
                             }
                         });
                         if (c !== nil)
@@ -244,7 +244,7 @@ Token parse_token(String src_fn, long line_idx, String line, ref long pos)
                                 //八进制换码序列
                                 if (c >= '0' && c <= '7')
                                 {
-                                    int v = c - '0';
+                                    int v = cast<int>(c - '0');
                                     for (long i = 1; i < 3 && remain_len > 0; ++ i)
                                     {
                                         c = line.char_at(pos);
@@ -254,7 +254,7 @@ Token parse_token(String src_fn, long line_idx, String line, ref long pos)
                                         }
                                         ++ pos;
                                         -- remain_len;
-                                        v = v * 8 + (c - '0');
+                                        v = v * 8 + cast<int>(c - '0');
                                     }
                                     if (v > 0xFF)
                                     {
@@ -272,15 +272,15 @@ Token parse_token(String src_fn, long line_idx, String line, ref long pos)
                                         helper.syntax_err("十六进制换码序列长度不够");
                                     }
 
-                                    var vs = line.sub_str(pos, pos + 2)
+                                    var vs = line.sub_str(pos, pos + 2);
                                     pos += 2;
                                     remain_len -= 2;
 
                                     ulong v;
-                                    var c = call_and_catch<ValueError>([-]{
+                                    var ce = call_and_catch<ValueError>([-]{
                                         v = vs.parse_ulong(16);
                                     });
-                                    if (c !== nil)
+                                    if (ce !== nil)
                                     {
                                         helper.syntax_err("非法的十六进制换码序列[\\x%s]".(line.sub_str(pos - 4, pos)));
                                     }
