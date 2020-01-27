@@ -1,7 +1,5 @@
 import time;
 
-const LOOPS = 50000000;
-
 enum Ident {
     IDENT_0,
     IDENT_1,
@@ -19,22 +17,21 @@ class Record
     int_comp    : int;
     str_comp    : String;
 
-    func assign(other Record) {
-        ptr_comp = other.ptr_comp;
-        discr = other.discr;
-        enum_comp = other.enum_comp;
-        int_comp = other.int_comp;
-        str_comp = other.str_comp;
+    assign(other Record) {
+        ptr_comp    = other.ptr_comp;
+        discr       = other.discr;
+        enum_comp   = other.enum_comp;
+        int_comp    = other.int_comp;
+        str_comp    = other.str_comp;
     }
 }
 
-var int_glob                    : int,
-    bool_glob                   : bool,
-    char_1_glob                 : uint8 = '\0',
-    char_2_glob                 : uint8,
-    array_1_glob                = []int{}.resize(51),
-    array_2_glob                = map(Range(0, 51), lambda (i : int) {[]int{}.resize(51)}),
-    (ptr_glob, ptr_glob_next)   = (Record(), Record());
+final var LOOPS = 50000000;
+
+var (int_glob, bool_glob, char_1_glob, char_2_glob) = (0, false, '\0', '\0');
+var array_1_glob = []int{}.resize(51);
+var array_2_glob = map(Range(0, 51), lambda (i : int) {[]int{}.resize(51)});
+var (ptr_glob, ptr_glob_next) = (Record(), Record());
 
 func func_3(enum_par_in : Ident) (ret : bool) {
     var enum_loc = enum_par_in;
@@ -96,8 +93,8 @@ func proc_8(array_1_par : []int, array_2_par : [][]int, int_par_1 : int, int_par
 }
 
 func proc_7(int_par_1 : int, int_par_2 : int) (ret : int) {
-    var int_loc     = int_par_1 + 2,
-        int_par_out = int_par_2 + int_loc;
+    var int_loc = int_par_1 + 2;
+    var int_par_out = int_par_2 + int_loc;
     ret = int_par_out;
 }
 
@@ -145,8 +142,8 @@ func proc_3(ptr_par_out : Record) (ret : Record) {
 }
 
 func proc_2(int_ptr_io : int) (ret : int) {
-    var int_loc     = int_ptr_io + 10,
-        enum_loc    = IDENT_0;
+    var int_loc = int_ptr_io + 10;
+    var enum_loc = IDENT_0;
     while (true) {
         if (char_1_glob == 'A') {
             int_loc -= 1;
@@ -195,10 +192,8 @@ func proc_0() {
         proc_5();
         proc_4();
 
-        var int_loc_1   = 2,
-            int_loc_2   = 3,
-            str_2_loc   = "DHRYSTONE PROGRAM, 2'ND STRING",
-            enum_loc    = IDENT_2;
+        var (int_loc_1, int_loc_2, str_2_loc, enum_loc) = (2, 3, "DHRYSTONE PROGRAM, 2'ND STRING", IDENT_2);
+
         bool_glob = !func_2(str_1_loc, str_2_loc);
 
         var int_loc_3 = 0;
@@ -210,7 +205,7 @@ func proc_0() {
         proc_8(array_1_glob, array_2_glob, int_loc_1, int_loc_3);
         proc_1(ptr_glob);
 
-        for (var char_idx uint8: Range('A', char_2_glob + 1)) {
+        for (var char_idx: Range('A', char_2_glob + 1)) {
             if (enum_loc == func_1(char_idx, 'C')) {
                 enum_loc = proc_6(IDENT_1);
             }
@@ -222,7 +217,7 @@ func proc_0() {
     }
 }
 
-public func main() {
+public func main() (err : Error) {
     var ts = time.time();
     proc_0();
     var tm = time.time() - ts;

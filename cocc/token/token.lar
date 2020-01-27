@@ -1,0 +1,8 @@
+from .. import
+    util:  cocc_util,
+;
+
+public bool is_valid_name(String s)
+{
+    cocc_util.exit("todo");
+}

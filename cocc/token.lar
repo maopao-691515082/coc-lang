@@ -1,4 +1,0 @@
-bool is_valid_name(String s)
-{
-    //todo
-}

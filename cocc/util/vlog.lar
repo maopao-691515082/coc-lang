@@ -1,0 +1,14 @@
+bool using_vmode = false;
+
+public void enable_vmode()
+{
+    using_vmode = true;
+}
+
+public void vlog(String msg)
+{
+    if (using_vmode)
+    {
+        println("cocc: [%s] %s".(time.format_time("15:04:05", time.time()), msg));
+    }
+}
