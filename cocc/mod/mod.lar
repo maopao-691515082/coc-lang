@@ -111,7 +111,7 @@ public class Mod
             }
             token_list.pop_sym("/");
         }
-        assert(mnl.size() > 0);
+        cocc_util.assert(mnl.size() > 0);
 
         if (token_list.peek().is_sym(":"))
         {
