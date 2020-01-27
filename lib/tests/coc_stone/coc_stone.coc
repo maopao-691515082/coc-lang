@@ -9,8 +9,7 @@ enum Ident {
     IDENT_5,
 }
 
-class Record
-{
+class Record {
     ptr_comp    : Record;
     discr       : int;
     enum_comp   : Ident;

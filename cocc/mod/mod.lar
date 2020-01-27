@@ -5,11 +5,12 @@ import
 ;
 from .. import
     util:   cocc_util,
+    token:  cocc_token,
 ;
 
 public class Mod
 {
-    String name, mod_dir;
+    String name, dir;
 
     //导入的模块表，{源码文件: {导入名: 模块全名}}
     util.HashMap<String, util.HashMap<String, String>> dep_mod_map_map;
@@ -31,115 +32,101 @@ public class Mod
 
     Mod(String mod_name)
     {
-        //todo
+        this.name = mod_name;
+        this.dir  = find_mod_path(this.name);
+
+        this.dep_mod_map_map = new util.HashMap<String, util.HashMap<String, String>>(nil);
+
+        this.this.cls_map   = new util.HashMap<String, Cls>(nil);
+        this.gcls_map       = new util.HashMap<String, Gcls>(nil);
+        this.gcls_inst_map  = new util.HashMap<String, GclsInst>(nil);
+        this.intf_map       = new util.HashMap<String, Intf>(nil);
+        this.gintf_map      = new util.HashMap<String, Gintf>(nil);
+        this.gintf_inst_map = new util.HashMap<String, GintfInst>(nil);
+        this.func_map       = new util.HashMap<String, Func>(nil);
+        this.gfunc_map      = new util.HashMap<String, Gfunc>(nil);
+        this.gfunc_inst_map = new util.HashMap<String, GfuncInst>(nil);
+        this.gv_map         = new util.HashMap<String, Gv>(nil);
+
+        this.mode_elem_name_set = new util.HashSet<String>(nil);
     }
 
     void precompile()
     {
-        //todo
-    }
-}
-
-Mod new_mod(String mod_name)
-{
-    //获取模块目录
-    var mod_dir = []{
-        String find_mod_path()
-        {
-            foreach (var d: new String[]{std_lib_dir, usr_lib_dir}.iter())
+        var src_fns = util.sorted(iters.filter(os.list_dir(this.dir).iter(), []{
+            public bool is_valid(String fn)
             {
-                var mp = "%s/%s".(d, mod_name);
-                if (os.lstat(mp).is_dir())
-                {
-                    return mp;
-                }
+                return fn.has_suffix(".coc");
             }
-            exit("找不到模块[%s]".(mod_name));
-        }
-    }.find_mod_path();
-
-    //定义存储模块元素和相关信息的变量
-    var dep_mod_map_map = new util.HashMap<String, util.HashMap<String, String>>(nil);  //{文件名: {模块名: 模块全名}}
-        cls_map         = new util.HashMap<String, Cls>(nil),
-        gcls_map        = new util.HashMap<String, Gcls>(nil),
-        gcls_inst_map   = new util.HashMap<String, GclsInst>(nil),
-        intf_map        = new util.HashMap<String, Intf>(nil),
-        gintf_map       = new util.HashMap<String, Gintf>(nil),
-        gintf_inst_map  = new util.HashMap<String, GintfInst>(nil),
-        func_map        = new util.HashMap<String, Func>(nil),
-        gfunc_map       = new util.HashMap<String, Gfunc>(nil),
-        gfunc_inst_map  = new util.HashMap<String, GfuncInst>(nil),
-        gv_map          = new util.HashMap<String, Gv>(nil);
-
-    //预编译
-    foreach (var fn: util.sorted(iters.filter(os.list_dir(mod_dir).iter(), []{
-        public bool is_valid(String fn)
+        }));
+        foreach (var fn: fns.iter())
         {
-            return fn.has_suffix(".coc");
-        }
-    })).iter())
-    {
-        var full_fn = "%s/%s".(mod_dir, fn);
-        if (!os.lstat(full_fn).is_file())
-        {
-            exit("[%s]需要是一个文件".(full_fn));
-        }
-
-        var token_list = parse_token_list(full_fn);
-
-        var dep_mod_map = new util.HashMap<String, String>(nil);
-        dep_mod_map_map.set(fn, dep_mod_map);
-
-        var import_end = false;
-        while (!token_list.end())
-        {
-            var t = token_list.peek();
-            if (t.is_reserved("import"))
+            var full_fn = "%s/%s".(this.dir, fn);
+            if (!os.lstat(full_fn).is_file())
             {
-                //解析import
-                if (import_end)
-                {
-                    t.syntax_err("import必须在模块代码最前面");
-                }
+                exit("[%s]需要是一个文件".(full_fn));
+            }
 
-                token_list.pop();
-                var mnl = new util.Vector<String>(nil);
-                for (;;)
+            var token_list = cocc_token.parse_token_list(full_fn);
+
+            var dep_mod_map = new util.HashMap<String, String>(nil);
+            dep_mod_map_map.set(fn, dep_mod_map);
+
+            var import_end = false;
+            while (!token_list.end())
+            {
+                var t = token_list.peek();
+                if (t.is_reserved("import"))
                 {
-                    t = token_list.pop_name();
-                    mnl.add(t.value());
-                    if (!token_list.peek().is_sym("/"))
+                    //解析import
+                    if (import_end)
                     {
-                        break;
+                        t.syntax_err("import必须在模块代码最前面");
                     }
-                    token_list.pop_sym("/");
+                    this.parse_import(token_list, dep_mod_map);
+                    continue;
                 }
-                assert(mnl.size() > 0);
-
-                if (token_list.peek().is_sym(":"))
-                {
-                    //有别名
-                    token_list.pop_sym(":");
-                    t = token_list.pop_name();
-                }
-
-                var mn = t.value(),
-                    full_mn = "/".join(mnl.iter());
-                if (dep_mod_map.contains_key(mn))
-                {
-                    t.syntax_err("导入模块重名");
-                }
-                dep_mod_map.set(mn, full_mn);
-
-                token_list.pop_sym(";");
-
-                continue;
+                import_end = true;  //标识import段解析完毕
+                cocc_util.exit("todo");
             }
-            import_end = true;  //标识import段解析完毕
-
-            //todo
         }
+
+        cocc_util.exit("todo");
     }
 
-    //todo
+    void parse_import(cocc_token.TokenList token_list, util.HashMap<String, String> dep_mod_map)
+    {
+        var t = token_list.pop();
+        cocc_util.assert(t.is_reserved("import"));
+
+        var mnl = new util.Vector<String>(nil);
+        for (;;)
+        {
+            t = token_list.pop_name();
+            mnl.add(t.value());
+            if (!token_list.peek().is_sym("/"))
+            {
+                break;
+            }
+            token_list.pop_sym("/");
+        }
+        assert(mnl.size() > 0);
+
+        if (token_list.peek().is_sym(":"))
+        {
+            //有别名
+            token_list.pop_sym(":");
+            t = token_list.pop_name();
+        }
+
+        var mn = t.value(),
+            full_mn = "/".join(mnl.iter());
+        if (dep_mod_map.contains_key(mn))
+        {
+            t.syntax_err("导入模块重名");
+        }
+        dep_mod_map.set(mn, full_mn);
+
+        token_list.pop_sym(";");
+    }
 }
