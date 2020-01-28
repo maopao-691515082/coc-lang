@@ -7,7 +7,7 @@ from .. import
 
 Mod bltin_mod, main_mod;
 
-util.HashMap<String, Mod> mod_map;
+util.HashMap<String, Mod> mod_map = new util.HashMap<String, Mod>(nil);
 
 Mod new_mod(String mod_name)
 {
