@@ -19,6 +19,11 @@ public class TokenList
         this.idx    = 0;
     }
 
+    public String repr()
+    {
+        return "%r".(this.tl.to_array()[this.idx :]);
+    }
+
     void append(Token t)
     {
         this.tl.add(t);
