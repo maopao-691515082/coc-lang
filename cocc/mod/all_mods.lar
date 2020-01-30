@@ -25,8 +25,8 @@ public void precompile(String main_mod_name)
 
     //逐个预处理所有涉及到的模块
     var processing = new util.HashSet<String>(nil);
-    processing.update(bltin_mod.iter_dep_mods());
-    processing.update(main_mod.iter_dep_mods());
+    processing.update(bltin_mod.dep_mods().iter());
+    processing.update(main_mod.dep_mods().iter());
     while (processing.size() > 0)
     {
         var new_processing = new util.HashSet<String>(nil);
@@ -35,7 +35,7 @@ public void precompile(String main_mod_name)
             if (!mod_map.contains_key(mn))
             {
                 var m = new_mod(mn);
-                new_processing.update(m.iter_dep_mods());
+                new_processing.update(m.dep_mods().iter());
             }
         }
         processing = new_processing;

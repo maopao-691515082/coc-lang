@@ -130,4 +130,17 @@ public class Mod
 
         token_list.pop_sym(";");
     }
+
+    util.HashSet<String> dep_mods()
+    {
+        var s = new util.HashSet<String>(nil);
+        foreach (var dep_mod_map: this.dep_mod_map_map.value_iter())
+        {
+            foreach (var mod_name: dep_mod_map.value_iter())
+            {
+                s.add(mod_name);
+            }
+        }
+        return s;
+    }
 }
