@@ -1,0 +1,153 @@
+import
+    util,
+    io/bufio,
+;
+
+public class TokenList
+{
+    String              src_fn;
+    util.Vector<Token>  tl;
+    long                idx;
+
+    TokenList(String fn)
+    {
+        this.src_fn = fn;
+        this.tl     = new util.Vector<Token>(nil);
+        idx         = 0;
+    }
+}
+
+public TokenList parse_token_list(String fn)
+{
+    var src_f = new bufio.File(fn, "r");
+    defer src_f.close();
+
+    var lines       = src_f.read_lines(),
+        token_list  = new TokenList(fn),
+        in_comment  = false,
+        raw_str     = cast<RawStr>(nil),
+    ;
+
+    for (long line_idx = 0; line_idx < lines.size(); ++ line_idx)
+    {
+        var line = lines[line_idx];
+        long pos = 0;
+
+        if (in_comment)
+        {
+            //存在未完的块注释
+            pos = line.index("*/");
+            if (pos < 0)
+            {
+                //块注释还没完
+                continue;
+            }
+            //在本行结束，从注释之后继续解析
+            pos += 2;
+        }
+        else if (raw_str !== nil)
+        {
+            //存在未完的原始字符串
+            pos = line.index_char('`');
+            if (pos < 0)
+            {
+                //整行都是，追加
+                raw_str.value = "%s%s\n".(raw_str.value, line);
+                continue;
+            }
+            //在本行结束，追加后继续解析
+            raw_str.value = raw_str.value.concat(line.sub_str(0, pos));
+            token_list.append(new Token{
+                type:       TOKEN_TYPE_LITERAL_STR,
+                value:      raw_str.value,
+                src_fn:     src_fn,
+                line_idx:   raw_str.line_idx,
+                pos:        raw_str.pos,
+            });
+            ++ pos;
+        }
+
+        //从pos开始解析当前行
+        while (pos < line.len())
+        {
+            //跳过空格
+            for (; pos < line.len(); ++ pos)
+            {
+                char c = line.char_at(pos);
+                if (c != '\t' && c != '\x20')
+                {
+                    break;
+                }
+            }
+            if (pos >= line.len())
+            {
+                //行结束
+                break;
+            }
+
+            if (line.sub_str(pos, line.len()).has_prefix("//"))
+            {
+                //单行注释，忽略本行
+                break;
+            }
+
+            if (line.sub_str(pos, line.len()).has_prefix("/*"))
+            {
+                //块注释开始
+                pos += 2;
+                var end_pos = line.sub_str(pos, line.len()).index("*/") if pos < line.len() else -1L;
+                if (end_pos < 0)
+                {
+                    //注释跨行，设置标记并跳过本行
+                    in_comment = true;
+                    break;
+                }
+                //注释在本行结束，跳过并继续
+                pos += end_pos + 2;
+                continue;
+            }
+
+            if (line.char_at(pos) == '`')
+            {
+                //原始字符串
+                raw_str = new RawStr{
+                    value:      nil,
+                    line_idx:   line_idx,
+                    pos:        pos,
+                };
+                ++ pos;
+                var end_pos = line.sub_str(pos, line.end()).index_char('`') if pos < line.len() else -1L;
+                if (end_pos < 0)
+                {
+                    //原始字符串跨行
+                    raw_str.value = line.sub_str(pos, line.end()).concat("\n");
+                    break;
+                }
+                //在本行结束
+                raw_str.value = line.sub_str(pos, pos + end_pos);
+                token_list.append(new Token{
+                    type:       TOKEN_TYPE_LITERAL_STR,
+                    value:      raw_str.value,
+                    src_fn:     src_fn,
+                    line_idx:   raw_str.line_idx,
+                    pos:        raw_str.pos,
+                });
+                pos += end_pos + 1;
+                raw_str = nil;
+                continue;
+            }
+
+            //解析token
+            token_list.append(parse_token(src_fn, line_idx, line, ref pos));
+        }
+    }
+
+    if (in_comment || raw_str !== nil)
+    {
+        syntax_err(src_fn, lines.size(), lines[lines.size() - 1].len(), "存在未结束的%s".("块注释" if in_comment else "原始字符串"));
+    }
+
+    token_list.join_str_literal();
+
+    return token_list;
+}

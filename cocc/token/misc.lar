@@ -1,0 +1,13 @@
+import
+    re,
+;
+from .. import
+    util:  cocc_util,
+;
+
+final re.Re NAME_RE = new re.Re(`^[a-zA-Z_]\w*$`);
+
+public bool is_valid_name(String s)
+{
+    return NAME_RE.match(s);
+}

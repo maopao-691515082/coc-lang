@@ -1,0 +1,4 @@
+void __init()
+{
+    __init_SYMS();
+}

@@ -1,0 +1,8 @@
+from .. import
+    util:  cocc_util,
+;
+
+void syntax_err(String src_fn, long line_idx, long pos, String msg)
+{
+    cocc_util.exit("文件[%s]行[%s]列[%s] %s".(src_fn, line_idx + 1, pos + 1, msg));
+}

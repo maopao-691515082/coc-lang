@@ -1,8 +1,335 @@
+import
+    re,
+    util,
+    math,
+;
 from .. import
     util:  cocc_util,
 ;
 
-public bool is_valid_name(String s)
+final int
+    TOKEN_TYPE_LITERAL_STR      = 1,
+    TOKEN_TYPE_LITERAL_FLOAT    = 2,
+    TOKEN_TYPE_LITERAL_INT      = 3,
+    TOKEN_TYPE_LITERAL_UINT     = 4,
+    TOKEN_TYPE_LITERAL_BOOL     = 5,
+    TOKEN_TYPE_LITERAL_NIL      = 6,
+    TOKEN_TYPE_LITERAL_RESERVED = 7,
+    TOKEN_TYPE_LITERAL_NAME     = 8,
+    TOKEN_TYPE_LITERAL_CHAR     = 9,
+    TOKEN_TYPE_LITERAL_SYM      = 10,
+;
+
+final re.Re TOKEN_RE = new re.Re(
+    //浮点数
+    `(\d+\.?\d*[eE][+-]?\w+|`
+    `\.\d+[eE][+-]?\w+|`
+    `\d+\.\w*|`
+    `\.\d\w*)`
+    `|`
+    //十六进制浮点数
+    `(0[xX][0-9A-Fa-f]+\.?[0-9A-Fa-f]*[pP][+-]?\w+|`
+    `0[xX]\.[0-9A-Fa-f]+[pP][+-]?\w+|`
+    `0[xX][0-9A-Fa-f]+\.\w*|`
+    `0[xX]\.[0-9A-Fa-f]\w*)`
+    `|`
+    //符号
+    `(!==|===|!=|==|<<=|<<|<=|>>=|>>|>=|[-%^&*+|/]=|&&|\|\||\W)`
+    `|`
+    //整数
+    `(\d\w*)`
+    `|`
+    //词，关键字或标识符
+    `([a-zA-Z_]\w*)`
+);
+
+//关键字列表
+final util.HashSet<String> RESERVED_WORDS = new util.HashSet<String>(new String[]{
+    "import", "class", "interface", "func", "enum", "public", "var", "final"
+    "bool", "int", "uint", "int8", "uint8", "int16", "uint16", "int32", "uint32", "int64", "uint64", "float32", "float64",
+    "for", "while", "if", "else", "return", "break", "continue",
+    "nil", "true", "false", "this", "new", "cast",
+    "_",
+}.iter());
+
+final util.HashSet<String>
+    //赋值类符号
+    ASSIGN_SYMS = new util.HashSet<String>(new String[]{
+        "=", "%=", "^=", "&=", "*=", "-=", "+=", "|=", "/=", "<<=", ">>=",
+    }.iter()),
+    //二元运算符
+    BINOCULAR_OP_SYMS = new util.HashSet<String>(new String[]{
+        "%", "^", "&", "*", "-", "+", "|", "<", ">", "/", "!=", "==", "!==", "===", "<<", "<=", ">>", ">=", "&&", "||",
+    }.iter()),
+    //所有符号，这里并没有一次初始化完成，而是在__init中补全，将上面两个集合合并过来
+    SYMS = new util.HashSet<String>(new String[]{
+        "~", "!", "(", ")", "{", "}", "[", "]", ":", ";", `"`, "'", ",", ".",
+    }.iter()),
+;
+
+final util.HashMap<char, char> ESC_CHAR_MAP = new util.HashMap<char, char>(new Pair<char, char>[]{
+    'a':    '\a',
+    'b':    '\b',
+    'f':    '\f',
+    'n':    '\n',
+    'r':    '\r',
+    't':    '\t',
+    'v':    '\v',
+    '\\':   '\\',
+    '"':    '"',
+    '\'':   '\'',
+}.iter());
+
+void __init_SYMS()
 {
-    cocc_util.exit("todo");
+    //补全SYMS
+    SYMS.update(ASSIGN_SYMS.iter());
+    SYMS.update(BINOCULAR_OP_SYMS.iter());
+}
+
+public class Token
+{
+    int     type;
+    String  value;
+    String  src_fn;
+    long    line_idx, pos;
+
+    public void syntax_err(String msg)
+    {
+        syntax_err(this.src_fn, this.line_idx, this.pos, msg);
+    }
+}
+
+class RawStr
+{
+    String value;
+    long line_idx, pos;
+}
+
+Token parse_token(String src_fn, long line_idx, String line, ref long pos)
+{
+    var s = line.sub_str(pos, line.len());
+
+    var groups = TOKEN_RE.find_groups(s);
+    if (groups !== nil)
+    {
+        cocc_util.assert(groups.size() == 6);
+        if (groups[0].first() == 0)
+        {
+            long token_len = groups[0].second();
+            cocc_util.assert(token_len > 0);
+            for (long gi = 1; gi < 6; ++ gi)
+            {
+                var group = groups[gi];
+                if (group !== nil)
+                {
+                    cocc_util.assert(group.first() == 0 && group.second() == token_len);
+
+                    var token_pos = pos;
+                        token_value = s.sub_str(0, token_len);
+
+                    pos += token_len;   //对大部分token是如此，但字符串之类的需要手工解析的在下面流程中再调整
+
+                    var helper = []{
+                        void syntax_err(String msg)
+                        {
+                            syntax_err(src_fn, line_idx, token_pos, msg);
+                        }
+
+                        Token make_token(int type, String value)
+                        {
+                            return new Token{
+                                type:       type,
+                                value:      value,
+                                src_fn:     src_fn,
+                                line_idx:   line_idx,
+                                pos:        token_pos,
+                            };
+                        }
+                    };
+
+                    if (gi == 1 || gi == 2)
+                    {
+                        //浮点数
+                        double v;
+
+                        var c = call_and_catch<ValueError>([-]{
+                            v = token_value.parse_double();
+                            if (math.is_inf(v) || math.is_nan(v))
+                            {
+                                throw(ValueError(""));
+                            }
+                        });
+                        if (c !== nil)
+                        {
+                            helper.syntax_err("非法的浮点数字面量‘%s’".(token_value));
+                        }
+
+                        return helper.make_token(TOKEN_TYPE_LITERAL_FLOAT, token_value);
+                    }
+
+                    if (gi == 3)
+                    {
+                        //符号
+                        if (token_value.eq(`"`) || token_value.eq("'"))
+                        {
+                            //字符或字符串，注意解析时需要调整pos
+                            char quote = token_value.char_at(0);
+                            var cl = new util.Vector<char>(nil);
+                            for (;;)
+                            {
+                                if (pos >= line.len())
+                                {
+                                    helper.syntax_err("字符串或字符字面量不完整");
+                                }
+                                var c = line.char_at(pos);
+                                ++ pos;
+                                if (c == quote)
+                                {
+                                    //结束
+                                    break;
+                                }
+
+                                if (c != '\\')
+                                {
+                                    //普通字符
+                                    cl.add(c);
+                                    continue;
+                                }
+
+                                //转义字符
+
+                                long remain_len = line.len() - pos;
+                                if (remain_len <= 0)
+                                {
+                                    helper.syntax_err("字符串或字符字面量不完整，在转义处结束");
+                                }
+
+                                c = line.char_at(pos);
+                                ++ pos;
+                                -- remain_len;
+
+                                //单字符转义
+                                if (ESC_CHAR_MAP.contains_key(c))
+                                {
+                                    cl.add(ESC_CHAR_MAP.get(c));
+                                    continue;
+                                }
+
+                                //八进制换码序列
+                                if (c >= '0' && c <= '7')
+                                {
+                                    int v = c - '0';
+                                    for (long i = 1; i < 3 && remain_len > 0; ++ i)
+                                    {
+                                        c = line.char_at(pos);
+                                        if (c < '0' || c > '7')
+                                        {
+                                            break;
+                                        }
+                                        ++ pos;
+                                        -- remain_len;
+                                        v = v * 8 + (c - '0');
+                                    }
+                                    if (v > 0xFF)
+                                    {
+                                        helper.syntax_err("八进制换码序列值过大[%s]".(line.sub_str(pos - 4, pos)));
+                                    }
+                                    cl.add(cast<char>(v));
+                                    continue;
+                                }
+
+                                //十六进制换码序列
+                                if (c == 'x')
+                                {
+                                    if (remain_len < 2)
+                                    {
+                                        helper.syntax_err("十六进制换码序列长度不够");
+                                    }
+
+                                    var vs = line.sub_str(pos, pos + 2)
+                                    pos += 2;
+                                    remain_len -= 2;
+
+                                    ulong v;
+                                    var c = call_and_catch<ValueError>([-]{
+                                        v = vs.parse_ulong(16);
+                                    });
+                                    if (c !== nil)
+                                    {
+                                        helper.syntax_err("非法的十六进制换码序列[\\x%s]".(line.sub_str(pos - 4, pos)));
+                                    }
+
+                                    cl.add(cast<char>(v));
+                                    continue;
+                                }
+
+                                helper.syntax_err("非法的转义符[%c]".(c));
+                            }
+
+                            token_value = new String(cl.array_move());
+                            if (quote == '"')
+                            {
+                                return helper.make_token(TOKEN_TYPE_LITERAL_STR, token_value);
+                            }
+                            if (token_value.len() != 1)
+                            {
+                                helper.syntax_err("字符字面量的字符个数必须为1");
+                            }
+                            return helper.make_token(TOKEN_TYPE_LITERAL_CHAR, token_value);
+                        }
+
+                        if (SYMS.contains(token_value))
+                        {
+                            return helper.make_token(TOKEN_TYPE_LITERAL_SYM, token_value);
+                        }
+
+                        helper.syntax_err("非法的符号");
+                    }
+
+                    if (gi == 4)
+                    {
+                        //整数
+                        var is_uint = token_value.has_suffix("u") || token_value.has_suffix("U");
+                        if (is_uint)
+                        {
+                            token_value = token_value.sub_str(0, token_value.len() - 1);
+                        }
+                        ulong v;
+                        var c = call_and_catch<ValueError>([-]{
+                            v = token_value.parse_ulong(0);
+                        });
+                        if (c !== nil)
+                        {
+                            helper.syntax_err("非法的整数字面量‘%s’".(token_value));
+                        }
+                        if (!is_uint && v > cast<ulong>(LONG_MAX))
+                        {
+                            helper.syntax_err("过大的int字面量‘%s’".(token_value));
+                        }
+                        return helper.make_token(TOKEN_TYPE_LITERAL_UINT if is_uint else TOKEN_TYPE_LITERAL_INT, token_value);
+                    }
+
+                    cocc_util.assert(gi == 5);
+
+                    //词，关键字或标识符
+                    if (token_value.eq("true") || token_value.eq("false"))
+                    {
+                        return helper.make_token(TOKEN_TYPE_LITERAL_BOOL, token_value);
+                    }
+                    if (token_value.eq("nil"))
+                    {
+                        return helper.make_token(TOKEN_TYPE_LITERAL_NIL, token_value);
+                    }
+                    if (RESERVED_WORDS.contains(token_value))
+                    {
+                        return helper.make_token(TOKEN_TYPE_LITERAL_RESERVED, token_value);
+                    }
+                    return helper.make_token(TOKEN_TYPE_LITERAL_NAME, token_value);
+                }
+            }
+        }
+    }
+
+    syntax_err(src_fn, line_idx, pos, "");
 }
