@@ -109,6 +109,11 @@ public class Token
         return this.type == TOKEN_TYPE_LITERAL_RESERVED && (expect === nil || this.value().eq(expect));
     }
 
+    public bool is_sym(String expect)
+    {
+        return this.type == TOKEN_TYPE_LITERAL_SYM && (expect === nil || this.value().eq(expect));
+    }
+
     public bool is_literal_str()
     {
         return this.type == TOKEN_TYPE_LITERAL_STR;
