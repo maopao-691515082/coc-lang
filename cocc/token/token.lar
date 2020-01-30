@@ -90,13 +90,33 @@ void __init_SYMS()
 public class Token
 {
     int     type;
-    String  value;
+    String  _value;
     String  src_fn;
     long    line_idx, pos;
 
     public void syntax_err(String msg)
     {
         syntax_err(this.src_fn, this.line_idx, this.pos, msg);
+    }
+
+    public String value()
+    {
+        return this._value;
+    }
+
+    public bool is_reserved(String expect)
+    {
+        return this.type == TOKEN_TYPE_LITERAL_RESERVED && (expect === nil || this.value().eq(expect));
+    }
+
+    public bool is_literal_str()
+    {
+        return this.type == TOKEN_TYPE_LITERAL_STR;
+    }
+
+    public bool is_name()
+    {
+        return this.type == TOKEN_TYPE_LITERAL_NAME;
     }
 }
 

@@ -2,6 +2,9 @@ import
     util,
     io/bufio,
 ;
+from .. import
+    util:  cocc_util,
+;
 
 public class TokenList
 {
@@ -13,7 +16,105 @@ public class TokenList
     {
         this.src_fn = fn;
         this.tl     = new util.Vector<Token>(nil);
-        idx         = 0;
+        this.idx    = 0;
+    }
+
+    void append(Token t)
+    {
+        this.tl.add(t);
+    }
+
+    void join_str_literal()
+    {
+        var new_tl = new util.Vector<Token>(nil);
+
+        util.Vector<String> merging_strs;   //合并过程中的临时字符串列表
+        var merge = [-]{
+            void do()
+            {
+                if (merging_strs !== nil)
+                {
+                    //合并到最后一个token
+                    var last_t = new_tl.get(new_tl.size() - 1);
+                    cocc_util.assert(last_t.is_literal_str() && last_t.value().eq(merging_strs.get(0)));
+                    last_t._value = "".join(merging_strs.iter());
+                    merging_strs = nil;
+                }
+            }
+        };
+        foreach (var t: this.tl.iter())
+        {
+            if (merging_strs !== nil)
+            {
+                //正在合并
+                if (t.is_literal_str())
+                {
+                    //还有字符串字面量，持续合并
+                    merging_strs.add(t.value());
+                }
+                else
+                {
+                    //结束了，将合并结果写入，并增加t本身
+                    merge.do();
+                    new_tl.add(t);
+                }
+            }
+            else
+            {
+                cocc_util.assert(new_tl.size() == 0 || !new_tl.get(new_tl.size() - 1).is_literal_str());
+                new_tl.add(t);
+                if (t.is_literal_str())
+                {
+                    //开始合并
+                    merging_strs = new util.Vector<String>(nil);
+                    merging_strs.add(t.value());
+                }
+            }
+        }
+        merge.do(); //收尾
+
+        this.tl = new_tl;
+    }
+
+    public bool end()
+    {
+        return this.idx >= this.tl.size();
+    }
+
+    public Token peek()
+    {
+        if (this.end())
+        {
+            cocc_util.exit("文件[%s]代码意外结束".(this.src_fn));
+        }
+        return this.tl.get(this.idx);
+    }
+
+    public Token pop()
+    {
+        var t = this.peek();
+        ++ this.idx;
+        return t;
+    }
+
+    public Token pop_name()
+    {
+        var t = this.pop();
+        if (t.is_name())
+        {
+            return t;
+        }
+        t.syntax_err("需要标识符");
+    }
+
+    public Token pop_sym(String expect)
+    {
+        var t = this.pop();
+        if (t.is_sym(nil) && (expect === nil || t.value().eq(expect)))
+        {
+            return t;
+        }
+        t.syntax_err("需要符号%s".("" if expect === nil else "‘%s’".(expect)));
     }
 }
 
@@ -116,11 +217,11 @@ public TokenList parse_token_list(String fn)
                     pos:        pos,
                 };
                 ++ pos;
-                var end_pos = line.sub_str(pos, line.end()).index_char('`') if pos < line.len() else -1L;
+                var end_pos = line.sub_str(pos, line.len()).index_char('`') if pos < line.len() else -1L;
                 if (end_pos < 0)
                 {
                     //原始字符串跨行
-                    raw_str.value = line.sub_str(pos, line.end()).concat("\n");
+                    raw_str.value = line.sub_str(pos, line.len()).concat("\n");
                     break;
                 }
                 //在本行结束
