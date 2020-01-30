@@ -143,4 +143,9 @@ public class Mod
         }
         return s;
     }
+
+    void check_main_func()
+    {
+        cocc_util.exit("todo");
+    }
 }

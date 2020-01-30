@@ -83,7 +83,6 @@ public void main()
     step_runner.run("检查主模块main函数", [-]{
         cocc_util.exit("todo");
         cocc_mod.check_main_func();
-        //main_mod.check_main_func();
     });
 
     step_runner.run("编译所有模块", [-]{
