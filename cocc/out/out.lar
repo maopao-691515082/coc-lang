@@ -1,6 +1,0 @@
-String out_dir;
-
-public void set_out_dir(String _out_dir)
-{
-    out_dir = _out_dir;
-}

@@ -1,3 +1,0 @@
-public func main() (err : Error) {
-    println("hello world");
-}

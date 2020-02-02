@@ -16,13 +16,10 @@ def main():
     assert this_script_name.endswith(THIS_SCRIPT_NAME_SUFFIX)
     coc_dir = this_script_name[: -len(THIS_SCRIPT_NAME_SUFFIX)]
     std_lib_dir = coc_dir + "/lib"
-    usr_lib_dir = os.getenv("HOME") + "/coc"
-    if std_lib_dir.startswith(usr_lib_dir) or usr_lib_dir.startswith(std_lib_dir):
-        _exit("标准库和用户库目录有包含关系")
 
     #解析命令行参数
     try:
-        opt_list, args = getopt.getopt(sys.argv[1 :], "v", ["rbc"])
+        opt_list, args = getopt.getopt(sys.argv[1 :], "-v")
     except getopt.GetoptError:
         _exit("coc命令的选项解析错误")
     if not args:
@@ -30,38 +27,19 @@ def main():
 
     opt_map = dict(opt_list)
     verbose_opt = "-v" if "-v" in opt_map else ""
-    need_rebuild_cocc = "--rbc" in opt_map
-    mod_dir = os.path.abspath(args[0])
+    mod_file = os.path.abspath(args[0])
+    if not mod_file.endswith(".coc"):
+        _exit("脚本不是‘.coc’后缀")
+    mod_name = os.path.basename(mod_file)[: -4]
     args = args[1 :]
-
-    #提取模块名
-    for d in std_lib_dir, usr_lib_dir:
-        if os.path.isdir(mod_dir) and mod_dir.startswith(d):
-            mod_name = mod_dir[len(d) :].strip("/")
-            if mod_name:
-                break
-    else:
-        _exit("无效的模块目录[%s]" % mod_dir)
-
-    tmp_bin_dir = coc_dir + "/tmp/bin"
-    if not os.path.isdir(tmp_bin_dir):
-        os.makedirs(tmp_bin_dir)
-    cocc_bin = tmp_bin_dir + "/cocc"
-
-    if not os.path.isfile(cocc_bin) or need_rebuild_cocc:
-        ret = os.system("larvac %s -u -o %s -m github.com/maopao-691515082/coc-lang/cocc" % (verbose_opt, cocc_bin))
-        if ret != 0 or not os.path.isfile(cocc_bin):
-            _exit("构建cocc失败")
 
     out_dir = coc_dir + "/tmp/out/" + mod_name
 
-    ret = os.system("%s %s --coc_dir %s --usr_lib_dir %s -- %s" % (cocc_bin, verbose_opt, coc_dir, usr_lib_dir, mod_name))
+    ret = os.system("python '%s/compiler/cocc.py' %s -- '%s'" % (coc_dir, verbose_opt, mod_file))
     if ret != 0 or not os.path.isdir(out_dir):
         _exit("cocc编译失败")
 
-    ret = os.system("make -C %s all" % (out_dir))
-
-    exec_file = out_dir + "/coc.out"
+    exec_file = "%s/%s" % (out_dir, mod_name)
     os.execvp(exec_file, [exec_file] + args)
 
 if __name__ == "__main__":

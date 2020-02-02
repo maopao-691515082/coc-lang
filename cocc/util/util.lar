@@ -1,9 +1,0 @@
-import time;
-
-public void assert(bool cond)
-{
-    if (!cond)
-    {
-        throw("assertion failed");
-    }
-}

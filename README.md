@@ -1,4 +1,5 @@
-coc-lang
-==========
+# coc-lang
 
-基于Linux & Gcc-C++的一个语言，用于服务器编程，runtime等只做了个Demo，先放着
+用Go做后端的一个动态类型脚本语言
+
+*Note*：原先版本是基于Linux & Gcc-C++的一个静态类型语言，老代码存在`old_save`分支中
