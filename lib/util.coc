@@ -1,7 +1,0 @@
-public final native class Vector<E>
-{
-    public Vector(long sz);
-
-    public E get(long idx);
-    public void set(long idx, E elem);
-}
