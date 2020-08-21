@@ -1,3 +1,62 @@
 #!/usr/bin/env python
 #coding=utf8
 
+import sys, os, getopt
+
+def main():
+    #定位目录
+    THIS_SCRIPT_NAME_SUFFIX = "/bin/coc"
+    this_script_name = os.path.realpath(sys.argv[0])
+    assert this_script_name.endswith(THIS_SCRIPT_NAME_SUFFIX)
+    coc_dir = this_script_name[: -len(THIS_SCRIPT_NAME_SUFFIX)]
+    cocc_script_name = coc_dir + "/compiler/cocc.py"
+
+    def _show_usage_and_exit():
+        print >> sys.stderr, """
+编译并运行coc模块
+
+使用方法
+
+    coc OPTIONS MAIN_MODULE_SPEC ARGS
+
+各参数说明
+
+    OPTIONS: [-v] [-u]
+
+{v}
+
+{u}
+
+{MAIN_MODULE_SPEC}
+
+    ARGS
+
+        运行模块时的命令行参数
+""".format(**eval(open(coc_dir + "/compiler/help_dict").read()))
+        sys.exit(1)
+
+    cocc_args = ["python", cocc_script_name, "--run"]
+
+    #解析命令行参数
+    try:
+        opt_list, args = getopt.getopt(sys.argv[1 :], "vum:")
+    except getopt.GetoptError:
+        _show_usage_and_exit()
+    opt_map = dict(opt_list)
+    for opt in "-v", "-u":
+        if opt in opt_map:
+            cocc_args.append(opt)
+    if "-m" in opt_map:
+        cocc_args.extend(["-m", opt_map["-m"]])
+    else:
+        if len(args) < 1:
+            _show_usage_and_exit()
+        cocc_args.append(args[0])
+        args = args[1 :]
+    cocc_args.extend(args)
+
+    #调用cocc.py执行
+    os.execvp(cocc_args[0], cocc_args)
+
+if __name__ == "__main__":
+    main()

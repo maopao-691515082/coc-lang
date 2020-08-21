@@ -3,3 +3,5 @@
 *.pyc
 *.tmp
 tmp
+/usr_lib
+/tmp_workspace
